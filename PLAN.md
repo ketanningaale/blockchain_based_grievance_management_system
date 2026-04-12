@@ -63,7 +63,7 @@ This plan converts that research into a **production-ready, deployable system** 
 | **Python 3.11+** | Core backend language | Team preference |
 | **FastAPI** | REST API framework | Async, auto-generates OpenAPI docs, fastest Python framework |
 | **Web3.py** | Ethereum/Polygon interaction | Official Python Ethereum library |
-| **Celery + Redis** | Background jobs, fallback scheduler | Handles email queues, threshold backup checks |
+| **APScheduler** | In-process background scheduler | Runs threshold watchdog + email dispatch inside FastAPI — no external broker needed |
 | **Firebase Admin SDK (Python)** | Firestore + Auth backend access | Manages user records and real-time DB |
 | **Pinata SDK / requests** | Upload files to IPFS | Simple REST API |
 | **SendGrid** | Transactional email notifications | Reliable, free tier sufficient for institute scale |
@@ -100,7 +100,7 @@ This plan converts that research into a **production-ready, deployable system** 
 | **Auth** | Firebase Authentication | Email/password + Google SSO, institute email domain validation |
 | **File storage** | IPFS via Pinata | Grievance description docs, supporting attachments, resolution documents |
 | **On-chain state** | Solidity contract storage (Polygon) | Grievance status, action history, timestamps, hashes — the immutable audit trail |
-| **Cache + queue** | Redis | Celery task queue, API response cache, rate limiting |
+| **In-process cache** | Python dict + Firebase | Simple TTL cache in FastAPI process; no external cache service needed at personal project scale |
 
 > **Why not Airtable?**  
 > Airtable is a no-code spreadsheet/CRM tool. It has rate-limited APIs, no real-time listeners, no proper access control for application use, and is not suitable as a production database for a multi-user system. Firebase Firestore is the right call — it is free up to 1GB/50k reads per day, has real-time sync, and integrates directly with Firebase Auth.
@@ -127,7 +127,7 @@ This plan converts that research into a **production-ready, deployable system** 
 │   FASTAPI BACKEND   │            │     FIREBASE FIRESTORE       │
 │   Python 3.11       │◄──────────►│     (off-chain metadata,     │
 │   Web3.py           │            │      user profiles, cache)   │
-│   Celery workers    │            └──────────────────────────────┘
+│   APScheduler       │            └──────────────────────────────┘
 │   SendGrid          │
 └──────────┬──────────┘
            │  Web3.py RPC calls
@@ -462,7 +462,7 @@ backend/
 │   │   ├── firebase.py          # Firestore + Auth Admin SDK wrapper
 │   │   ├── ipfs.py              # Pinata upload/retrieve wrapper
 │   │   ├── email.py             # SendGrid email service
-│   │   └── threshold.py         # Celery task — backup threshold monitor
+│   │   └── threshold.py         # APScheduler job — threshold watchdog
 │   │
 │   ├── models/
 │   │   ├── grievance.py         # Pydantic models for request/response
@@ -473,9 +473,8 @@ backend/
 │       ├── crypto.py            # keccak256 student ID hashing
 │       └── pagination.py
 │
-├── worker/
-│   ├── celery_app.py            # Celery + Redis config
-│   └── tasks.py                 # Threshold backup task, email dispatch
+├── scheduler/
+│   └── jobs.py                  # APScheduler jobs — threshold watchdog, email dispatch
 │
 ├── tests/
 │   ├── test_grievances.py
@@ -614,29 +613,46 @@ File size limits: 10MB per attachment, max 5 attachments per grievance. Supporte
 
 ---
 
-### 5.5 Celery Tasks (Threshold Backup)
+### 5.5 APScheduler Jobs (Threshold Backup)
 
-Even with Chainlink Automation, a Celery beat task runs every 30 minutes as a backup monitor. If the Chainlink keeper misses a window (due to network issues), this task detects overdue grievances and either triggers the contract directly or alerts the admin.
+APScheduler runs inside the FastAPI process — no Redis, no separate worker, no extra service to host. Two background jobs are registered at app startup.
 
 ```python
-# worker/tasks.py
+# scheduler/jobs.py
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-@celery_app.task
-def check_threshold_violations():
+scheduler = AsyncIOScheduler()
+
+@scheduler.scheduled_job("interval", minutes=30)
+async def threshold_watchdog():
     """
     Runs every 30 mins. Fetches all active grievances from Firestore cache,
-    checks thresholdDeadline vs now. If overdue and not already auto-forwarded,
-    sends admin alert email and logs to Firestore.
+    checks thresholdDeadline vs now. If overdue and not already forwarded,
+    triggers auto-forward via the relay wallet and sends admin alert email.
     """
     ...
 
-@celery_app.task
-def send_notification_email(to: str, subject: str, template_id: str, data: dict):
+@scheduler.scheduled_job("interval", minutes=1)
+async def process_email_queue():
     """
-    Dispatched on every state change: to student, to next level authority.
+    Checks a Firestore 'email_queue' collection for pending emails,
+    sends via SendGrid, marks as sent. Simple and free — no Redis queue needed.
     """
     ...
 ```
+
+```python
+# app/main.py  — start scheduler with the app
+@app.on_event("startup")
+async def startup():
+    scheduler.start()
+
+@app.on_event("shutdown")
+async def shutdown():
+    scheduler.shutdown()
+```
+
+For a personal project this is completely sufficient. APScheduler's `AsyncIOScheduler` runs in the same event loop as FastAPI and handles both jobs without any external dependency.
 
 ---
 
@@ -799,7 +815,7 @@ Institute email domain validation: During registration, the backend checks that 
 | Notifications, read status | Firebase Firestore | Real-time, ephemeral |
 | Grievance text, documents | IPFS via Pinata | Decentralized, content-addressed |
 | Grievance metadata cache | Firebase Firestore | Fast list/filter without RPC calls |
-| Task queue, API cache | Redis | Ephemeral, high-speed |
+| Email queue | Firebase Firestore `email_queue` collection | APScheduler polls this — no Redis needed |
 
 ---
 
@@ -873,14 +889,19 @@ The backend (FastAPI with Firebase Admin SDK) bypasses security rules entirely �
 
 ---
 
-### 7.4 Redis Usage
+### 7.4 Caching (No Redis)
 
-| Key Pattern | TTL | Purpose |
-|---|---|---|
-| `grievance:list:{instituteId}:{status}` | 60s | Cached grievance list response |
-| `analytics:{instituteId}:{period}` | 300s | Cached analytics data |
-| `rate:{uid}:{endpoint}` | 60s | Rate limiting counter |
-| `celery:*` | — | Celery task queue and results |
+At personal project scale, a simple in-process Python dict with TTL is sufficient for caching. FastAPI's lifespan state holds the cache dict.
+
+```python
+# Simple in-process TTL cache — no Redis needed
+cache: dict[str, tuple[any, float]] = {}   # key → (value, expires_at)
+
+def cache_get(key: str): ...
+def cache_set(key: str, value: any, ttl_seconds: int): ...
+```
+
+Cached items: grievance list responses (60s TTL), analytics aggregations (300s TTL). If traffic grows and this becomes a bottleneck, Upstash Redis (free tier, 10k commands/day) can be dropped in as a swap with one config line change.
 
 ---
 
@@ -914,31 +935,37 @@ Chainlink Automation (formerly Chainlink Keepers) is a decentralized network of 
 
 ---
 
-### 8.2 Layer 2 — Celery Beat (Off-Chain, Backup)
+### 8.2 Layer 2 — APScheduler (Off-Chain, Primary for Besu)
 
-Runs every 30 minutes. Reads from Firestore cache (no RPC cost). If it detects a grievance past its `thresholdDeadline` that has NOT been auto-forwarded (i.e., Chainlink missed it), it:
-1. Sends an urgent email to the institute admin
-2. Logs the anomaly to Firestore
-3. Optionally triggers the contract directly via the relay wallet
+Since we are using a private Besu network (not a public chain), Chainlink Automation is not available. APScheduler running inside FastAPI is the sole threshold mechanism. It runs every 30 minutes, reads from Firestore (no RPC cost for the check), and triggers the relay wallet to call `autoForward()` on the contract when a deadline is missed.
 
 ```python
-# worker/tasks.py
-@celery_app.task(bind=True)
-def threshold_watchdog(self):
+# scheduler/jobs.py
+@scheduler.scheduled_job("interval", minutes=30)
+async def threshold_watchdog():
     now = datetime.utcnow()
-    overdue = firestore.collection("grievances").where(
-        "status", "in", ["AtCommittee", "AtHoD", "AtPrincipal"]
-    ).where("thresholdDeadline", "<", now).stream()
-
+    overdue = (
+        firestore_client.collection("grievances")
+        .where("status", "in", ["AtCommittee", "AtHoD", "AtPrincipal"])
+        .where("thresholdDeadline", "<", now)
+        .stream()
+    )
     for doc in overdue:
         g = doc.to_dict()
-        # Check if on-chain status is still active (not already forwarded)
-        on_chain = blockchain_service.get_grievance(g["onChainId"])
+        # Verify on-chain status hasn't already moved
+        on_chain = await blockchain_service.get_grievance(g["onChainId"])
         if on_chain["status"] == g["status"]:
-            # Chainlink missed it — trigger backup forward
-            blockchain_service.admin_auto_forward(g["onChainId"])
-            email_service.send_admin_alert(g)
+            await blockchain_service.admin_auto_forward(g["onChainId"])
+            await email_service.send_admin_alert(g)
+            # Log to Firestore for audit
+            firestore_client.collection("threshold_violations").add({
+                "grievanceId": g["onChainId"],
+                "triggeredAt": now,
+                "level": g["status"]
+            })
 ```
+
+This runs entirely within the free Render.com instance — no extra service, no cost.
 
 ---
 
@@ -968,13 +995,12 @@ Tasks:
 - [ ] Initialize Next.js project (`npx create-next-app`)
 - [ ] Create Firebase project, enable Firestore + Authentication
 - [ ] Create Pinata account, get API keys
-- [ ] Set up Redis locally via Docker
 - [ ] Create `.env.example` files for each sub-project
-- [ ] Write `docker-compose.yml` for local development (backend + redis)
+- [ ] Write `docker-compose.yml` for local development (backend only — no Redis needed)
 - [ ] Set up ESLint, Prettier, Black (Python formatter), pre-commit hooks
 - [ ] Set up GitHub Actions CI stub (lint + test on push)
 
-**Deliverable:** `docker-compose up` spins up backend + redis. Hardhat local node runs. Frontend dev server runs.
+**Deliverable:** `docker-compose up` spins up the backend. Hardhat local node runs. Frontend dev server runs.
 
 ---
 
@@ -1027,9 +1053,9 @@ Tasks:
 - [ ] Admin router — user management, role assignment (Firebase custom claims + contract)
 - [ ] Admin router — threshold configuration
 - [ ] Analytics router — aggregation queries on Firestore
-- [ ] Celery app + Redis setup
-- [ ] Threshold watchdog Celery task
-- [ ] Email dispatch Celery task
+- [ ] APScheduler setup — register jobs in `app/main.py` startup event
+- [ ] Threshold watchdog APScheduler job
+- [ ] Email queue APScheduler job
 - [ ] Write pytest tests for all routers (mock blockchain + Firebase)
 - [ ] API documentation review (FastAPI auto-generates at `/docs`)
 
@@ -1082,11 +1108,11 @@ Tasks:
 - [ ] Load test: Simulate 100 concurrent students submitting grievances (k6 or Locust)
 - [ ] Smart contract audit — run Slither (static analysis) and Mythril
 - [ ] Fix all HIGH/MEDIUM severity findings from audit
-- [ ] API security — rate limiting (Redis), input validation, SQL injection N/A (no SQL), XSS headers
+- [ ] API security — rate limiting (in-process counter via FastAPI middleware), input validation, XSS headers
 - [ ] Firebase security rules — tighten and test with Firebase emulator
 - [ ] IPFS content pinning — ensure Pinata keeps files indefinitely (paid plan if needed)
 - [ ] Error monitoring — integrate Sentry for backend + frontend
-- [ ] Performance — add Redis caching to hot endpoints
+- [ ] Performance — verify in-process TTL cache is working on hot endpoints
 - [ ] Accessibility audit — WCAG 2.1 AA compliance check
 - [ ] Cross-browser testing — Chrome, Firefox, Safari, mobile
 
@@ -1101,10 +1127,8 @@ Tasks:
 Tasks:
 - [ ] Deploy contracts to Polygon PoS mainnet
 - [ ] Verify contracts on Polygonscan
-- [ ] Register Chainlink Automation upkeep on mainnet, fund with LINK
-- [ ] Dockerize backend + worker
-- [ ] Deploy backend to cloud provider (options: Railway, Render, or DigitalOcean App Platform)
-- [ ] Deploy Redis (Redis Cloud free tier or same platform)
+- [ ] Dockerize backend
+- [ ] Deploy backend to Render.com free tier (includes APScheduler — no separate worker needed)
 - [ ] Deploy frontend to Vercel (free tier, best for Next.js)
 - [ ] Configure custom domain (institute provides domain)
 - [ ] Set up GitHub Actions CI/CD — auto-deploy on merge to `main`
@@ -1154,9 +1178,8 @@ blockchain_based_grievance_management_system/
 │   │   ├── services/
 │   │   ├── models/
 │   │   └── utils/
-│   ├── worker/
-│   │   ├── celery_app.py
-│   │   └── tasks.py
+│   ├── scheduler/
+│   │   └── jobs.py              # APScheduler jobs
 │   ├── tests/
 │   ├── Dockerfile
 │   ├── requirements.txt
@@ -1173,7 +1196,7 @@ blockchain_based_grievance_management_system/
 │   ├── package.json
 │   └── .env.local.example
 │
-├── docker-compose.yml                   # Local dev: backend + redis
+├── docker-compose.yml                   # Local dev: backend only
 ├── docker-compose.prod.yml              # Production overrides
 ├── .github/
 │   └── workflows/
@@ -1192,16 +1215,14 @@ blockchain_based_grievance_management_system/
 | Component | Service | Cost |
 |---|---|---|
 | Frontend | Vercel (free tier) | Free |
-| Backend (FastAPI) | Railway or Render | ~$5/month |
-| Redis | Redis Cloud (30MB free) | Free |
-| Firebase (Firestore + Auth) | Spark plan | Free up to limits |
-| IPFS / Pinata | Free tier (1GB) | Free initially |
-| Polygon transactions | MATIC gas fees | ~$0.001 per tx |
-| Chainlink Automation | LINK tokens | ~$5/month |
+| Backend (FastAPI + APScheduler) | Render.com free tier | Free |
+| Firebase (Firestore + Auth) | Spark plan | Free |
+| IPFS / Pinata | Free tier (1GB) | Free |
+| Besu private network | Self-hosted (college server or local) | Free |
 | Domain | Institute provides | — |
-| **Total** | | **~$10–15/month** |
+| **Total** | | **$0/month** |
 
-For a larger institute or higher volume, estimated cost stays under $50/month.
+When handing over to an institute for production, Render's paid tier (~$7/month) removes the sleep-on-idle behaviour — but that is the institute's cost, not yours during development.
 
 ---
 
@@ -1222,9 +1243,6 @@ CONTRACT_ADDRESS=0x...
 # Pinata
 PINATA_API_KEY=...
 PINATA_SECRET_KEY=...
-
-# Redis
-REDIS_URL=redis://localhost:6379
 
 # SendGrid
 SENDGRID_API_KEY=...
@@ -1264,7 +1282,7 @@ NEXT_PUBLIC_POLYGON_RPC=...
 
 **On merge to `main`:**
 1. Deploy contracts (if contract files changed) — run Hardhat deploy script
-2. Deploy backend — Docker build + push to registry + Railway redeploy
+2. Deploy backend — push to GitHub triggers Render.com auto-deploy
 3. Deploy frontend — Vercel auto-deploys from GitHub
 
 ---
@@ -1295,11 +1313,11 @@ NEXT_PUBLIC_POLYGON_RPC=...
 
 - All endpoints require Firebase ID token verification
 - Role checks at both Firebase custom claims level AND smart contract level
-- Rate limiting via Redis on all write endpoints (max 10 submissions per student per day)
+- Rate limiting via in-process counter middleware on all write endpoints (max 10 submissions per student per day)
 - Input sanitization — Pydantic strips unexpected fields
 - File upload validation — MIME type check, file size limits, virus scan (ClamAV or VirusTotal API)
 - Relay wallet private key in environment variable, never in code
-- HTTPS only — enforced by Vercel and Railway
+- HTTPS only — enforced by Vercel and Render.com
 
 ---
 
@@ -1328,7 +1346,7 @@ The original 2018 research paper proposed a solid foundation. Here is how this i
 | Area | Original Paper | This Implementation |
 |---|---|---|
 | **Blockchain** | Hyperledger Fabric 1.1 | Solidity + Polygon PoS — EVM-compatible, cheaper, easier to develop |
-| **Threshold** | Mentioned conceptually | Fully implemented with Chainlink Automation (on-chain) + Celery backup (off-chain) |
+| **Threshold** | Mentioned conceptually | Fully implemented with APScheduler (in-process, no external service, free) |
 | **Document storage** | Not addressed | IPFS via Pinata — decentralized, content-addressed, permanent |
 | **Consensus** | Mentioned conceptually | Fully on-chain voting with majority rule, all votes recorded |
 | **Privacy** | Anonymous option mentioned | keccak256 hashing of student ID on-chain; Firestore holds mapping server-side |
@@ -1340,7 +1358,7 @@ The original 2018 research paper proposed a solid foundation. Here is how this i
 | **Upgradability** | Not addressed | OpenZeppelin Transparent Proxy for contract upgrades without data loss |
 | **Security audit** | Not addressed | Slither + Mythril + manual review before mainnet |
 | **Upvote/Downvote** | Mentioned | Implemented on-chain (one vote per student per grievance) |
-| **Cost** | Enterprise setup | ~$10–15/month total infrastructure |
+| **Cost** | Enterprise setup | $0/month — fully free stack for personal/dev use |
 
 ### Additional features not in the original paper:
 
