@@ -60,10 +60,11 @@ async def permission_error_handler(_: Request, exc: PermissionError) -> JSONResp
 # Imported here after app is created to avoid circular imports.
 # Each router is added as we build them in later steps.
 
-from app.routers import auth  # noqa: E402
+from app.routers import auth, grievances  # noqa: E402
 from app.services.blockchain import get_blockchain_service  # noqa: E402
 
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(auth.router,       prefix="/api/v1/auth",       tags=["auth"])
+app.include_router(grievances.router, prefix="/api/v1/grievances",  tags=["grievances"])
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
