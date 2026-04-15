@@ -5,6 +5,82 @@
 
 ---
 
+## Progress Tracker
+
+_Last updated: April 2026_
+
+### Blockchain (Hardhat + Solidity)
+
+| File | Status | Notes |
+|---|---|---|
+| `blockchain/hardhat.config.ts` | Done | localhost + Besu networks, gasPrice=0 |
+| `blockchain/contracts/RoleManager.sol` | Done | OpenZeppelin AccessControl, 5 roles |
+| `blockchain/contracts/GrievanceSystem.sol` | Done | Full lifecycle, committee voting, auto-forward, pause |
+| `blockchain/contracts/GrievanceFactory.sol` | Done | Multi-institute factory pattern |
+| `blockchain/scripts/deploy.ts` | Done | Deploys factory + institute, writes addresses to JSON |
+| `blockchain/scripts/export-abis.ts` | Done | Copies ABIs to backend after compile |
+| `blockchain/test/RoleManager.test.ts` | Done | 10 tests |
+| `blockchain/test/GrievanceSystem.test.ts` | Done | 45 tests — full lifecycle coverage |
+
+### Backend (FastAPI + Python)
+
+| File | Status | Notes |
+|---|---|---|
+| `backend/app/config.py` | Done | pydantic-settings, all env vars typed |
+| `backend/app/main.py` | Done | CORS, lifespan, error handlers, health endpoint |
+| `backend/app/dependencies.py` | Done | `get_current_user`, `require_role()` factory |
+| `backend/app/services/firebase.py` | Done | Auth, Firestore CRUD, notifications, email queue |
+| `backend/app/services/blockchain.py` | Done | Web3.py relay wallet, all contract calls async |
+| `backend/app/services/ipfs.py` | Done | Pinata upload/retrieve, file validation |
+| `backend/app/services/email.py` | Done | SendGrid, 11 notification types, HTML templates |
+| `backend/scheduler/jobs.py` | Done | threshold_watchdog (30min), email_queue_processor (1min) |
+| `backend/app/routers/auth.py` | Done | register, verify-token, me, update-me |
+| `backend/app/routers/grievances.py` | Done | submit, list, get, history, vote, feedback |
+| `backend/app/routers/committee.py` | Done | propose, get-votes, execute |
+| `backend/app/routers/hod.py` | Done | forward / revert / resolve |
+| `backend/app/routers/principal.py` | Done | resolve / revert |
+| `backend/app/routers/admin.py` | Done | users, roles, thresholds, departments, analytics |
+| `backend/tests/test_auth.py` | Done | 8 tests, Firebase mocked |
+
+### Frontend (Next.js 14 + TypeScript)
+
+| File | Status | Notes |
+|---|---|---|
+| Project scaffold | **In Progress** | package.json, tsconfig, Tailwind, shadcn/ui |
+| `lib/firebase.ts` | Pending | Firebase client SDK init |
+| `lib/api.ts` | Pending | Axios instance with token injection |
+| `hooks/useAuth.ts` | Pending | Firebase auth state + role |
+| `middleware.ts` | Pending | Role-based route protection |
+| `app/(auth)/login` | Pending | |
+| `app/(auth)/register` | Pending | |
+| `app/student/dashboard` | Pending | |
+| `app/student/submit` | Pending | |
+| `app/student/grievance/[id]` | Pending | StatusTracker + countdown + history |
+| `app/committee/dashboard` | Pending | |
+| `app/committee/grievance/[id]` | Pending | VotePanel |
+| `app/hod/dashboard` | Pending | |
+| `app/hod/grievance/[id]` | Pending | ActionPanel |
+| `app/principal/dashboard` | Pending | |
+| `app/principal/grievance/[id]` | Pending | ActionPanel |
+| `app/admin/dashboard` | Pending | Analytics charts |
+| `app/admin/users` | Pending | Role management table |
+| `app/admin/settings` | Pending | Thresholds + departments |
+
+### Infrastructure / DevOps
+
+| Item | Status | Notes |
+|---|---|---|
+| `docker-compose.yml` | Pending | Backend only (no Redis needed) |
+| GitHub Actions CI | Pending | Lint + test on PR |
+| GitHub Actions CD | Pending | Deploy on merge to main |
+| Render.com deploy | Pending | Free tier, auto-deploy from GitHub |
+| Vercel deploy | Pending | Frontend, free tier |
+| Besu network setup | Pending | 3-node private network guide |
+
+---
+
+---
+
 ## Table of Contents
 
 1. [Executive Summary](#1-executive-summary)
