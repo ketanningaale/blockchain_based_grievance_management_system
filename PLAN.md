@@ -46,13 +46,17 @@ _Last updated: April 2026_
 
 | File | Status | Notes |
 |---|---|---|
-| Project scaffold | **In Progress** | package.json, tsconfig, Tailwind, shadcn/ui |
-| `lib/firebase.ts` | Pending | Firebase client SDK init |
-| `lib/api.ts` | Pending | Axios instance with token injection |
-| `hooks/useAuth.ts` | Pending | Firebase auth state + role |
-| `middleware.ts` | Pending | Role-based route protection |
-| `app/(auth)/login` | Pending | |
-| `app/(auth)/register` | Pending | |
+| Project scaffold | Done | package.json, tsconfig, Tailwind, Next.js 14 |
+| `lib/firebase.ts` | Done | Firebase client SDK singleton |
+| `lib/api.ts` | Done | Axios with Bearer token interceptor |
+| `lib/utils.ts` | Done | cn, timeAgo, countdown, statusColor, ipfsUrl |
+| `types/index.ts` | Done | All shared TypeScript types |
+| `hooks/useAuth.ts` | Done | Firebase auth state → UserProfile |
+| `middleware.ts` | Done | Edge middleware, cookie-based role routing |
+| `components/providers.tsx` | Done | QueryClientProvider + Sonner Toaster |
+| `app/(auth)/layout.tsx` | Done | Centered auth card layout |
+| `app/(auth)/login/page.tsx` | Done | React Hook Form + Zod, Firebase sign-in, cookie set |
+| `app/(auth)/register/page.tsx` | Done | Calls backend /register, redirect to login |
 | `app/student/dashboard` | Pending | |
 | `app/student/submit` | Pending | |
 | `app/student/grievance/[id]` | Pending | StatusTracker + countdown + history |
