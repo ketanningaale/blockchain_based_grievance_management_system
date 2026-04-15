@@ -61,6 +61,7 @@ async def permission_error_handler(_: Request, exc: PermissionError) -> JSONResp
 # Each router is added as we build them in later steps.
 
 from app.routers import auth  # noqa: E402
+from app.services.blockchain import get_blockchain_service  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
@@ -69,4 +70,9 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
 @app.get("/health", tags=["health"])
 async def health() -> dict:
-    return {"status": "ok", "env": settings.app_env}
+    bc_connected = await get_blockchain_service().is_connected()
+    return {
+        "status":     "ok",
+        "env":        settings.app_env,
+        "blockchain": "connected" if bc_connected else "unreachable",
+    }

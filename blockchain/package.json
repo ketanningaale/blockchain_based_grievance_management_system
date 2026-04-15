@@ -10,7 +10,8 @@
     "deploy:besu": "hardhat run scripts/deploy.ts --network besu",
     "node": "hardhat node",
     "lint": "solhint 'contracts/**/*.sol'",
-    "clean": "hardhat clean"
+    "clean": "hardhat clean",
+    "export-abis": "ts-node scripts/export-abis.ts"
   },
   "devDependencies": {
     "dotenv": "^16.0.0",
