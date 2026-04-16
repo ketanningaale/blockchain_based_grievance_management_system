@@ -63,8 +63,10 @@ _Last updated: April 2026_
 | `app/student/dashboard/page.tsx` | Done | KPIs, filter tabs, TanStack Query list |
 | `app/student/submit/page.tsx` | Done | Multipart form, drag-and-drop upload, anon toggle |
 | `app/student/grievance/[id]/page.tsx` | Done | Stepper, countdown, IPFS content, votes, feedback, timeline |
-| `app/committee/dashboard` | Pending | |
-| `app/committee/grievance/[id]` | Pending | VotePanel |
+| `components/layout/StaffLayout.tsx` | Done | Shared navbar layout for all staff roles |
+| `app/committee/layout.tsx` | Done | Uses StaffLayout |
+| `app/committee/dashboard/page.tsx` | Done | KPIs, grievance list, overdue count |
+| `app/committee/grievance/[id]/page.tsx` | Done | IPFS content, tally bar, propose + execute voting |
 | `app/hod/dashboard` | Pending | |
 | `app/hod/grievance/[id]` | Pending | ActionPanel |
 | `app/principal/dashboard` | Pending | |

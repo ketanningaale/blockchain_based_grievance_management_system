@@ -16,7 +16,8 @@ A production-ready grievance management system for educational institutes, built
 | Backend API Routers | Complete | auth, grievances, committee, hod, principal, admin |
 | Frontend — Scaffold + Auth | Complete | Next.js 14, login/register pages, middleware |
 | Frontend — Student UI | Complete | Dashboard, submit, and grievance detail page |
-| Frontend — Staff UI | Pending | Committee, HoD, Principal, Admin dashboards |
+| Frontend — Committee UI | Complete | Dashboard + voting detail page |
+| Frontend — HoD / Principal / Admin | Pending | Action panels and admin analytics |
 
 See [PLAN.md](./PLAN.md) for the full implementation plan and detailed progress tracker.
 
