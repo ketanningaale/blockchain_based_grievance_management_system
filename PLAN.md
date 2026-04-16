@@ -62,7 +62,7 @@ _Last updated: April 2026_
 | `app/student/layout.tsx` | Done | Sticky navbar, mobile drawer, sign-out |
 | `app/student/dashboard/page.tsx` | Done | KPIs, filter tabs, TanStack Query list |
 | `app/student/submit/page.tsx` | Done | Multipart form, drag-and-drop upload, anon toggle |
-| `app/student/grievance/[id]` | Pending | StatusTracker + countdown + history |
+| `app/student/grievance/[id]/page.tsx` | Done | Stepper, countdown, IPFS content, votes, feedback, timeline |
 | `app/committee/dashboard` | Pending | |
 | `app/committee/grievance/[id]` | Pending | VotePanel |
 | `app/hod/dashboard` | Pending | |
