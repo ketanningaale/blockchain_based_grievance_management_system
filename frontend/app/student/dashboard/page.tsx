@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { PlusCircle, RefreshCw, Inbox } from "lucide-react";
 import GrievanceCard from "@/components/grievance/GrievanceCard";
-import StatusBadge from "@/components/ui/StatusBadge";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import type { GrievanceListItem, GrievanceStatus } from "@/types";
