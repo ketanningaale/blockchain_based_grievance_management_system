@@ -29,30 +29,39 @@ jobs:
       - name: Create stub .env for tests
         working-directory: backend
         run: |
-          cat > .env <<'EOF'
-          APP_ENV=test
-          SECRET_KEY=ci-test-secret
-          ALLOWED_ORIGINS=http://localhost:3000
-          BESU_RPC_URL=http://127.0.0.1:8545
-          RELAY_WALLET_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-          CONTRACT_ROLE_MANAGER=0x0000000000000000000000000000000000000000
-          CONTRACT_GRIEVANCE_SYSTEM=0x0000000000000000000000000000000000000000
-          FIREBASE_PROJECT_ID=ci-test
-          FIREBASE_PRIVATE_KEY_ID=ci
-          FIREBASE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAK\n-----END RSA PRIVATE KEY-----\n"
-          FIREBASE_CLIENT_EMAIL=ci@ci.iam.gserviceaccount.com
-          FIREBASE_CLIENT_ID=123
-          FIREBASE_CLIENT_CERT_URL=https://example.com
-          INSTITUTE_EMAIL_DOMAIN=test.edu
-          INSTITUTE_ID=test_001
-          PINATA_API_KEY=ci
-          PINATA_SECRET_KEY=ci
-          PINATA_GATEWAY=https://gateway.pinata.cloud
-          SENDGRID_API_KEY=
-          SENDGRID_FROM_EMAIL=ci@test.edu
-          SENDGRID_FROM_NAME=CI
-          THRESHOLD_CHECK_INTERVAL_MINUTES=30
-          EOF
+          {
+            echo "APP_ENV=test"
+            echo "SECRET_KEY=ci-test-secret-key-32-chars-min!!"
+            echo "ALLOWED_ORIGINS=http://localhost:3000"
+            echo "BESU_RPC_URL=http://127.0.0.1:8545"
+            echo "RELAY_WALLET_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+            echo "CONTRACT_ROLE_MANAGER=0x0000000000000000000000000000000000000000"
+            echo "CONTRACT_GRIEVANCE_SYSTEM=0x0000000000000000000000000000000000000000"
+            echo "FIREBASE_PROJECT_ID=ci-test"
+            echo "FIREBASE_PRIVATE_KEY_ID=ci"
+            echo 'FIREBASE_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4e\n-----END RSA PRIVATE KEY-----\n'
+            echo "FIREBASE_CLIENT_EMAIL=ci@ci.iam.gserviceaccount.com"
+            echo "FIREBASE_CLIENT_ID=123456789"
+            echo "FIREBASE_CLIENT_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/ci"
+            echo "INSTITUTE_EMAIL_DOMAIN=test.edu.in"
+            echo "INSTITUTE_ID=institute_001"
+            echo "PINATA_API_KEY=ci"
+            echo "PINATA_SECRET_KEY=ci"
+            echo "PINATA_GATEWAY=https://gateway.pinata.cloud"
+            echo "SENDGRID_API_KEY="
+            echo "SENDGRID_FROM_EMAIL=ci@test.edu.in"
+            echo "SENDGRID_FROM_NAME=CI"
+            echo "THRESHOLD_CHECK_INTERVAL_MINUTES=30"
+          } > .env
+
+      - name: Create stub ABI files
+        # Blockchain service loads ABIs from disk; stubs prevent FileNotFoundError
+        # if any code path triggers get_blockchain_service() during tests.
+        working-directory: backend
+        run: |
+          mkdir -p app/services/abis
+          echo '[]' > app/services/abis/RoleManager.json
+          echo '[]' > app/services/abis/GrievanceSystem.json
 
       - name: Run tests
         working-directory: backend
@@ -70,26 +79,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        # npm install (not ci) because package-lock.json is gitignored
+        run: npm install
 
-      - name: Create stub .env.local for type-check
+      - name: Create stub .env.local
         working-directory: frontend
         run: |
-          cat > .env.local <<'EOF'
-          NEXT_PUBLIC_API_URL=http://localhost:8000
-          NEXT_PUBLIC_FIREBASE_API_KEY=ci
-          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ci.firebaseapp.com
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID=ci
-          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=ci.appspot.com
-          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123
-          NEXT_PUBLIC_FIREBASE_APP_ID=1:123:web:abc
-          NEXT_PUBLIC_PINATA_GATEWAY=https://gateway.pinata.cloud
-          EOF
+          {
+            echo "NEXT_PUBLIC_API_URL=http://localhost:8000"
+            echo "NEXT_PUBLIC_FIREBASE_API_KEY=ci-key"
+            echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ci.firebaseapp.com"
+            echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=ci"
+            echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=ci.appspot.com"
+            echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123"
+            echo "NEXT_PUBLIC_FIREBASE_APP_ID=1:123:web:abc"
+            echo "NEXT_PUBLIC_PINATA_GATEWAY=https://gateway.pinata.cloud"
+          } > .env.local
 
       - name: Type-check
         working-directory: frontend
