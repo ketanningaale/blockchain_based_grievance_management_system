@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -30,11 +32,22 @@ const ROLE_ROUTES: Record<Role, string> = {
   admin:     "/admin/dashboard",
 };
 
+// ── Registered toast (isolated so useSearchParams is inside Suspense) ─────────
+
+function RegisteredToast() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("registered") === "true") {
+      toast.success("Account created — please sign in.");
+    }
+  }, [searchParams]);
+  return null;
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
+  const router = useRouter();
   const { user, loading, login } = useAuth();
 
   const [submitting, setSubmitting] = useState(false);
@@ -45,13 +58,6 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
-
-  // Show "registered successfully" banner when redirected from /register
-  useEffect(() => {
-    if (searchParams.get("registered") === "true") {
-      toast.success("Account created — please sign in.");
-    }
-  }, [searchParams]);
 
   // Redirect once the auth hook has resolved the user profile
   useEffect(() => {
@@ -85,6 +91,9 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 space-y-6">
+      <Suspense fallback={null}>
+        <RegisteredToast />
+      </Suspense>
       {/* Header */}
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>

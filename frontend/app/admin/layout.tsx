@@ -1,3 +1,5 @@
+"use client";
+
 import StaffLayout from "@/components/layout/StaffLayout";
 import { LayoutDashboard, Users, Settings } from "lucide-react";
 

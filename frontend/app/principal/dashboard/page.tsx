@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, Inbox } from "lucide-react";
 import GrievanceCard from "@/components/grievance/GrievanceCard";
