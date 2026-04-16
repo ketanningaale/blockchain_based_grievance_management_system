@@ -19,7 +19,7 @@ A production-ready grievance management system for educational institutes, built
 | Frontend — Committee UI | Complete | Dashboard + voting detail page |
 | Frontend — HoD UI | Complete | Dashboard + Forward/Resolve/Revert action page |
 | Frontend — Principal UI | Complete | Dashboard + Resolve/Revert action page |
-| Frontend — Admin UI | Pending | Analytics, user management, settings |
+| Frontend — Admin UI | Complete | Analytics charts, user management, settings (thresholds + departments) |
 
 See [PLAN.md](./PLAN.md) for the full implementation plan and detailed progress tracker.
 

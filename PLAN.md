@@ -75,9 +75,10 @@ _Last updated: April 2026_
 | `app/principal/layout.tsx` | Done | Uses StaffLayout |
 | `app/principal/dashboard/page.tsx` | Done | KPIs, overdue count, grievance list |
 | `app/principal/grievance/[id]/page.tsx` | Done | Resolve / Revert via ActionPanel |
-| `app/admin/dashboard` | Pending | Analytics charts |
-| `app/admin/users` | Pending | Role management table |
-| `app/admin/settings` | Pending | Thresholds + departments |
+| `app/admin/layout.tsx` | Done | Uses StaffLayout with Dashboard/Users/Settings nav |
+| `app/admin/dashboard/page.tsx` | Done | KPI row, donut status chart, department bar chart |
+| `app/admin/users/page.tsx` | Done | Searchable table, inline role editor, delete |
+| `app/admin/settings/page.tsx` | Done | Threshold hours form (on-chain), department CRUD |
 
 ### Infrastructure / DevOps
 
