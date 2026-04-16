@@ -130,15 +130,23 @@ class BlockchainService:
 
     def _build_and_send(self, fn) -> TxReceipt:
         """
-        Build a transaction from a contract function call, sign with the relay
-        wallet, broadcast, and wait for the receipt.
-        Gas price is 0 on a private Besu network — no cost.
+        Build, sign, and broadcast a transaction; wait for the receipt.
+
+        Gas pricing:
+          relay_gas_price == 0  → private Besu/Hardhat (free gas)
+          relay_gas_price == -1 → auto-detect from the network (testnets / mainnet)
+          relay_gas_price >  0  → use the explicit value in wei
         """
+        settings  = get_settings()
+        gas_price = settings.relay_gas_price
+        if gas_price < 0:
+            gas_price = self._w3.eth.gas_price   # network estimate
+
         tx = fn.build_transaction({
             "from":     self._relay_account.address,
             "nonce":    self._w3.eth.get_transaction_count(self._relay_account.address),
             "gas":      500_000,
-            "gasPrice": 0,
+            "gasPrice": gas_price,
         })
         signed  = self._relay_account.sign_transaction(tx)
         tx_hash = self._w3.eth.send_raw_transaction(signed.raw_transaction)
