@@ -15,7 +15,7 @@ A production-ready grievance management system for educational institutes, built
 | Backend Services (Python) | Complete | Firebase, Blockchain, IPFS, Email, Scheduler |
 | Backend API Routers | Complete | auth, grievances, committee, hod, principal, admin |
 | Frontend — Scaffold + Auth | Complete | Next.js 14, login/register pages, middleware |
-| Frontend — Student UI | **In Progress** | Dashboard done; submit + detail pending |
+| Frontend — Student UI | **In Progress** | Dashboard + submit done; detail page pending |
 | Frontend — Staff UI | Pending | Committee, HoD, Principal, Admin dashboards |
 
 See [PLAN.md](./PLAN.md) for the full implementation plan and detailed progress tracker.

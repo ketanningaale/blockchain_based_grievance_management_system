@@ -61,7 +61,7 @@ _Last updated: April 2026_
 | `components/grievance/GrievanceCard.tsx` | Done | Card with votes, countdown, status (shared) |
 | `app/student/layout.tsx` | Done | Sticky navbar, mobile drawer, sign-out |
 | `app/student/dashboard/page.tsx` | Done | KPIs, filter tabs, TanStack Query list |
-| `app/student/submit` | Pending | Multipart form + file upload |
+| `app/student/submit/page.tsx` | Done | Multipart form, drag-and-drop upload, anon toggle |
 | `app/student/grievance/[id]` | Pending | StatusTracker + countdown + history |
 | `app/committee/dashboard` | Pending | |
 | `app/committee/grievance/[id]` | Pending | VotePanel |
