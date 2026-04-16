@@ -62,27 +62,33 @@ _Last updated: April 2026_
 | `app/student/layout.tsx` | Done | Sticky navbar, mobile drawer, sign-out |
 | `app/student/dashboard/page.tsx` | Done | KPIs, filter tabs, TanStack Query list |
 | `app/student/submit/page.tsx` | Done | Multipart form, drag-and-drop upload, anon toggle |
-| `app/student/grievance/[id]` | Pending | StatusTracker + countdown + history |
-| `app/committee/dashboard` | Pending | |
-| `app/committee/grievance/[id]` | Pending | VotePanel |
-| `app/hod/dashboard` | Pending | |
-| `app/hod/grievance/[id]` | Pending | ActionPanel |
-| `app/principal/dashboard` | Pending | |
-| `app/principal/grievance/[id]` | Pending | ActionPanel |
-| `app/admin/dashboard` | Pending | Analytics charts |
-| `app/admin/users` | Pending | Role management table |
-| `app/admin/settings` | Pending | Thresholds + departments |
+| `app/student/grievance/[id]/page.tsx` | Done | Stepper, countdown, IPFS content, votes, feedback, timeline |
+| `components/layout/StaffLayout.tsx` | Done | Shared navbar layout for all staff roles |
+| `app/committee/layout.tsx` | Done | Uses StaffLayout |
+| `app/committee/dashboard/page.tsx` | Done | KPIs, grievance list, overdue count |
+| `app/committee/grievance/[id]/page.tsx` | Done | IPFS content, tally bar, propose + execute voting |
+| `components/grievance/ActionPanel.tsx` | Done | Shared single-actor action panel (HoD + Principal) |
+| `components/grievance/StaffDetailShell.tsx` | Done | Shared detail layout (IPFS + timeline + action slot) |
+| `app/hod/layout.tsx` | Done | Uses StaffLayout |
+| `app/hod/dashboard/page.tsx` | Done | KPIs, overdue count, grievance list |
+| `app/hod/grievance/[id]/page.tsx` | Done | Forward / Resolve / Revert via ActionPanel |
+| `app/principal/layout.tsx` | Done | Uses StaffLayout |
+| `app/principal/dashboard/page.tsx` | Done | KPIs, overdue count, grievance list |
+| `app/principal/grievance/[id]/page.tsx` | Done | Resolve / Revert via ActionPanel |
+| `app/admin/layout.tsx` | Done | Uses StaffLayout with Dashboard/Users/Settings nav |
+| `app/admin/dashboard/page.tsx` | Done | KPI row, donut status chart, department bar chart |
+| `app/admin/users/page.tsx` | Done | Searchable table, inline role editor, delete |
+| `app/admin/settings/page.tsx` | Done | Threshold hours form (on-chain), department CRUD |
 
 ### Infrastructure / DevOps
 
 | Item | Status | Notes |
 |---|---|---|
-| `docker-compose.yml` | Pending | Backend only (no Redis needed) |
-| GitHub Actions CI | Pending | Lint + test on PR |
-| GitHub Actions CD | Pending | Deploy on merge to main |
-| Render.com deploy | Pending | Free tier, auto-deploy from GitHub |
-| Vercel deploy | Pending | Frontend, free tier |
-| Besu network setup | Pending | 3-node private network guide |
+| `docker-compose.yml` | Done | Backend service + optional Hardhat node comment |
+| `.github/workflows/ci.yml` | Done | Backend pytest, frontend type-check + lint, Solidity compile + test |
+| `.github/workflows/cd.yml` | Done | Render deploy hook + Vercel CLI deploy on push to main |
+| `docs/deployment.md` | Done | Firebase, Pinata, SendGrid, Render, Vercel step-by-step |
+| `docs/besu-network.md` | Done | IBFT 2.0 3-node setup, genesis.json, systemd service |
 
 ---
 

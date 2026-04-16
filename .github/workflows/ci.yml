@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  # ── Backend: lint + test ──────────────────────────────────────────────────────
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Create stub .env for tests
+        working-directory: backend
+        run: |
+          cat > .env <<'EOF'
+          APP_ENV=test
+          SECRET_KEY=ci-test-secret
+          ALLOWED_ORIGINS=http://localhost:3000
+          BESU_RPC_URL=http://127.0.0.1:8545
+          RELAY_WALLET_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+          CONTRACT_ROLE_MANAGER=0x0000000000000000000000000000000000000000
+          CONTRACT_GRIEVANCE_SYSTEM=0x0000000000000000000000000000000000000000
+          FIREBASE_PROJECT_ID=ci-test
+          FIREBASE_PRIVATE_KEY_ID=ci
+          FIREBASE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAK\n-----END RSA PRIVATE KEY-----\n"
+          FIREBASE_CLIENT_EMAIL=ci@ci.iam.gserviceaccount.com
+          FIREBASE_CLIENT_ID=123
+          FIREBASE_CLIENT_CERT_URL=https://example.com
+          INSTITUTE_EMAIL_DOMAIN=test.edu
+          INSTITUTE_ID=test_001
+          PINATA_API_KEY=ci
+          PINATA_SECRET_KEY=ci
+          PINATA_GATEWAY=https://gateway.pinata.cloud
+          SENDGRID_API_KEY=
+          SENDGRID_FROM_EMAIL=ci@test.edu
+          SENDGRID_FROM_NAME=CI
+          THRESHOLD_CHECK_INTERVAL_MINUTES=30
+          EOF
+
+      - name: Run tests
+        working-directory: backend
+        run: pytest tests/ -v --tb=short
+
+  # ── Frontend: TypeScript type-check ──────────────────────────────────────────
+  frontend:
+    name: Frontend Type-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Create stub .env.local for type-check
+        working-directory: frontend
+        run: |
+          cat > .env.local <<'EOF'
+          NEXT_PUBLIC_API_URL=http://localhost:8000
+          NEXT_PUBLIC_FIREBASE_API_KEY=ci
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ci.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID=ci
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=ci.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123
+          NEXT_PUBLIC_FIREBASE_APP_ID=1:123:web:abc
+          NEXT_PUBLIC_PINATA_GATEWAY=https://gateway.pinata.cloud
+          EOF
+
+      - name: Type-check
+        working-directory: frontend
+        run: npm run type-check
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+  # ── Solidity: compile + test ──────────────────────────────────────────────────
+  solidity:
+    name: Solidity Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: blockchain/package-lock.json
+
+      - name: Install dependencies
+        working-directory: blockchain
+        run: npm ci
+
+      - name: Compile contracts
+        working-directory: blockchain
+        run: npx hardhat compile
+
+      - name: Run tests
+        working-directory: blockchain
+        run: npx hardhat test

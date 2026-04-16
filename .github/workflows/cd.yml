@@ -1,0 +1,76 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+# Only one deployment runs at a time; cancel older runs if a new push arrives.
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  # ── Deploy backend to Render.com ──────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend (Render.com)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render deploy hook
+        # Set RENDER_DEPLOY_HOOK_URL in repository → Settings → Secrets.
+        # Get the URL from Render dashboard → your service → Settings → Deploy Hook.
+        # If the secret is not set, this step is skipped (safe for forks/dev branches).
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+          | grep -q "^2" && echo "Render deploy triggered." \
+                         || (echo "Render hook failed." && exit 1)
+
+      - name: Note — Render auto-deploy
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' }}
+        run: |
+          echo "RENDER_DEPLOY_HOOK_URL not set."
+          echo "If Render GitHub integration is enabled, Render will deploy automatically."
+
+  # ── Deploy frontend to Vercel ─────────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend (Vercel)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Vercel's GitHub integration auto-deploys production on push to main.
+      # The step below is an alternative if you prefer CLI-driven deploys.
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel (production)
+        # Set these three secrets in the repository:
+        #   VERCEL_TOKEN      — from vercel.com → Settings → Tokens
+        #   VERCEL_ORG_ID     — from .vercel/project.json after `vercel link`
+        #   VERCEL_PROJECT_ID — from .vercel/project.json after `vercel link`
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Note — Vercel auto-deploy
+        if: ${{ secrets.VERCEL_TOKEN == '' }}
+        run: |
+          echo "VERCEL_TOKEN not set."
+          echo "If Vercel GitHub integration is enabled, Vercel deploys automatically."
