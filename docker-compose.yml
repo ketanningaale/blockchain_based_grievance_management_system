@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: grievance_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APP_ENV=development
+    volumes:
+      # Mount code for hot-reload in development (remove in production)
+      - ./backend:/app
+      # Prevent overwriting installed packages with local node_modules equivalent
+      - /app/__pycache__
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Optional: local Hardhat node (replaces Besu for development) ──────────────
+  # Uncomment this block to run a local EVM node instead of a Besu network.
+  # Run `npm run deploy --network localhost` in ./blockchain/ after starting this.
+  #
+  # hardhat:
+  #   image: node:20-alpine
+  #   container_name: grievance_hardhat
+  #   working_dir: /app
+  #   volumes:
+  #     - ./blockchain:/app
+  #   command: sh -c "npm install && npx hardhat node"
+  #   ports:
+  #     - "8545:8545"

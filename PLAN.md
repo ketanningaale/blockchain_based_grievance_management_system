@@ -84,12 +84,11 @@ _Last updated: April 2026_
 
 | Item | Status | Notes |
 |---|---|---|
-| `docker-compose.yml` | Pending | Backend only (no Redis needed) |
-| GitHub Actions CI | Pending | Lint + test on PR |
-| GitHub Actions CD | Pending | Deploy on merge to main |
-| Render.com deploy | Pending | Free tier, auto-deploy from GitHub |
-| Vercel deploy | Pending | Frontend, free tier |
-| Besu network setup | Pending | 3-node private network guide |
+| `docker-compose.yml` | Done | Backend service + optional Hardhat node comment |
+| `.github/workflows/ci.yml` | Done | Backend pytest, frontend type-check + lint, Solidity compile + test |
+| `.github/workflows/cd.yml` | Done | Render deploy hook + Vercel CLI deploy on push to main |
+| `docs/deployment.md` | Done | Firebase, Pinata, SendGrid, Render, Vercel step-by-step |
+| `docs/besu-network.md` | Done | IBFT 2.0 3-node setup, genesis.json, systemd service |
 
 ---
 

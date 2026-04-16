@@ -20,8 +20,16 @@ A production-ready grievance management system for educational institutes, built
 | Frontend — HoD UI | Complete | Dashboard + Forward/Resolve/Revert action page |
 | Frontend — Principal UI | Complete | Dashboard + Resolve/Revert action page |
 | Frontend — Admin UI | Complete | Analytics charts, user management, settings (thresholds + departments) |
+| Infrastructure | Complete | docker-compose, GitHub Actions CI/CD, deployment + Besu guides |
 
 See [PLAN.md](./PLAN.md) for the full implementation plan and detailed progress tracker.
+
+## Docs
+
+| Guide | Description |
+|---|---|
+| [docs/deployment.md](./docs/deployment.md) | Step-by-step: Firebase → Pinata → Render.com → Vercel |
+| [docs/besu-network.md](./docs/besu-network.md) | IBFT 2.0 3-node private Besu network + genesis.json |
 
 ---
 
