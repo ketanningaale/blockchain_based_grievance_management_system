@@ -41,8 +41,19 @@ const config: HardhatUserConfig = {
       url: process.env.BESU_RPC_URL || "http://127.0.0.1:8545",
       chainId: Number(process.env.BESU_CHAIN_ID) || 1337,
       accounts: [DEPLOYER_PRIVATE_KEY],
-      // Gas price 0 is valid on a private Besu network with free gas
       gasPrice: 0,
+    },
+
+    // ── Sepolia testnet (hosted demo via Alchemy) ──────────────────────────
+    // 1. Sign up at alchemy.com → create app → Ethereum → Sepolia
+    // 2. Set ALCHEMY_SEPOLIA_URL in blockchain/.env
+    // 3. Set DEPLOYER_PRIVATE_KEY to a wallet that has Sepolia ETH
+    //    (get free ETH from sepoliafaucet.com)
+    // Deploy: npx hardhat run scripts/deploy.ts --network sepolia
+    sepolia: {
+      url: process.env.ALCHEMY_SEPOLIA_URL || "",
+      chainId: 11155111,
+      accounts: [DEPLOYER_PRIVATE_KEY],
     },
   },
 

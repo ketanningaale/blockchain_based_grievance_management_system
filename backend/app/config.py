@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     relay_wallet_private_key: str
     contract_role_manager: str
     contract_grievance_system: str
+    # Set to 0 for private Besu/Hardhat (free gas).
+    # Leave at -1 (default) to auto-detect from the network (required for testnets).
+    relay_gas_price: int = -1
 
     # ── Firebase ──────────────────────────────────────────────────────────────
     firebase_project_id: str
