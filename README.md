@@ -8,13 +8,15 @@ A production-ready grievance management system for educational institutes, built
 
 ## Current Build Status
 
-| Layer | Status |
-|---|---|
-| Smart Contracts (Solidity) | Complete |
-| Contract Tests (Hardhat) | Complete — 45 tests |
-| Backend Services (Python) | Complete |
-| Backend API Routers | Complete |
-| Frontend (Next.js) | In Progress |
+| Layer | Status | Detail |
+|---|---|---|
+| Smart Contracts (Solidity) | Complete | RoleManager, GrievanceSystem, GrievanceFactory |
+| Contract Tests (Hardhat) | Complete | 45 tests — full lifecycle coverage |
+| Backend Services (Python) | Complete | Firebase, Blockchain, IPFS, Email, Scheduler |
+| Backend API Routers | Complete | auth, grievances, committee, hod, principal, admin |
+| Frontend — Scaffold + Auth | Complete | Next.js 14, login/register pages, middleware |
+| Frontend — Student UI | **In Progress** | Dashboard done; submit + detail pending |
+| Frontend — Staff UI | Pending | Committee, HoD, Principal, Admin dashboards |
 
 See [PLAN.md](./PLAN.md) for the full implementation plan and detailed progress tracker.
 

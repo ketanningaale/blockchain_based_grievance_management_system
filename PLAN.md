@@ -57,8 +57,11 @@ _Last updated: April 2026_
 | `app/(auth)/layout.tsx` | Done | Centered auth card layout |
 | `app/(auth)/login/page.tsx` | Done | React Hook Form + Zod, Firebase sign-in, cookie set |
 | `app/(auth)/register/page.tsx` | Done | Calls backend /register, redirect to login |
-| `app/student/dashboard` | Pending | |
-| `app/student/submit` | Pending | |
+| `components/ui/StatusBadge.tsx` | Done | Colour-coded status badge (shared) |
+| `components/grievance/GrievanceCard.tsx` | Done | Card with votes, countdown, status (shared) |
+| `app/student/layout.tsx` | Done | Sticky navbar, mobile drawer, sign-out |
+| `app/student/dashboard/page.tsx` | Done | KPIs, filter tabs, TanStack Query list |
+| `app/student/submit` | Pending | Multipart form + file upload |
 | `app/student/grievance/[id]` | Pending | StatusTracker + countdown + history |
 | `app/committee/dashboard` | Pending | |
 | `app/committee/grievance/[id]` | Pending | VotePanel |
