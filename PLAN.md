@@ -67,10 +67,14 @@ _Last updated: April 2026_
 | `app/committee/layout.tsx` | Done | Uses StaffLayout |
 | `app/committee/dashboard/page.tsx` | Done | KPIs, grievance list, overdue count |
 | `app/committee/grievance/[id]/page.tsx` | Done | IPFS content, tally bar, propose + execute voting |
-| `app/hod/dashboard` | Pending | |
-| `app/hod/grievance/[id]` | Pending | ActionPanel |
-| `app/principal/dashboard` | Pending | |
-| `app/principal/grievance/[id]` | Pending | ActionPanel |
+| `components/grievance/ActionPanel.tsx` | Done | Shared single-actor action panel (HoD + Principal) |
+| `components/grievance/StaffDetailShell.tsx` | Done | Shared detail layout (IPFS + timeline + action slot) |
+| `app/hod/layout.tsx` | Done | Uses StaffLayout |
+| `app/hod/dashboard/page.tsx` | Done | KPIs, overdue count, grievance list |
+| `app/hod/grievance/[id]/page.tsx` | Done | Forward / Resolve / Revert via ActionPanel |
+| `app/principal/layout.tsx` | Done | Uses StaffLayout |
+| `app/principal/dashboard/page.tsx` | Done | KPIs, overdue count, grievance list |
+| `app/principal/grievance/[id]/page.tsx` | Done | Resolve / Revert via ActionPanel |
 | `app/admin/dashboard` | Pending | Analytics charts |
 | `app/admin/users` | Pending | Role management table |
 | `app/admin/settings` | Pending | Thresholds + departments |
