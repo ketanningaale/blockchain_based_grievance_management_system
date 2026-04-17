@@ -70,56 +70,59 @@ function ThresholdsPanel() {
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-      <div>
-        <h2 className="text-base font-semibold text-gray-900">Escalation Thresholds</h2>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Stored on-chain. The APScheduler watchdog checks every 30 minutes and
-          auto-forwards overdue grievances.
-        </p>
+    <div className="card-elevated overflow-hidden">
+      {/* Gradient top border accent */}
+      <div className="h-1 gradient-brand" />
+      <div className="p-6 space-y-5">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Escalation Thresholds</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Stored on-chain. The APScheduler watchdog checks every 30 minutes and
+            auto-forwards overdue grievances.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-50 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {fields.map(({ key, label, desc }) => (
+              <div key={key} className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">{label}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    type="number"
+                    min={1}
+                    max={720}
+                    value={form[key]}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, [key]: Number(e.target.value) }))
+                    }
+                    className="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm text-right
+                               focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white transition-all"
+                  />
+                  <span className="text-xs font-medium text-gray-500 whitespace-nowrap">hrs</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={() => save()}
+          disabled={isPending || isLoading}
+          className="btn-primary"
+        >
+          {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <><Save className="h-4 w-4" /> Save Thresholds</>}
+        </button>
       </div>
-
-      {isLoading ? (
-        <div className="space-y-3 animate-pulse">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-50 rounded-lg" />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {fields.map(({ key, label, desc }) => (
-            <div key={key} className="grid sm:grid-cols-3 items-center gap-3">
-              <div className="sm:col-span-2">
-                <p className="text-sm font-medium text-gray-800">{label}</p>
-                <p className="text-xs text-gray-500">{desc}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={720}
-                  value={form[key]}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, [key]: Number(e.target.value) }))
-                  }
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm text-right
-                             focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-500 whitespace-nowrap">hours</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={() => save()}
-        disabled={isPending || isLoading}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg
-                   text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-      >
-        {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <><Save className="h-4 w-4" /> Save Thresholds</>}
-      </button>
     </div>
   );
 }
@@ -166,67 +169,74 @@ function DepartmentsPanel() {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-      <div>
-        <h2 className="text-base font-semibold text-gray-900">Departments</h2>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Used to scope grievances and committee assignments per department.
-        </p>
-      </div>
-
-      {/* Add form */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="New department name…"
-          value={newDept}
-          onChange={(e) => setNewDept(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          onClick={handleAdd}
-          disabled={adding || !newDept.trim()}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg
-                     text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Add
-        </button>
-      </div>
-
-      {/* List */}
-      {isLoading ? (
-        <div className="space-y-2 animate-pulse">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-10 bg-gray-50 rounded-lg" />
-          ))}
+    <div className="card-elevated overflow-hidden">
+      {/* Gradient top border accent */}
+      <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
+      <div className="p-6 space-y-5">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Departments</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Used to scope grievances and committee assignments per department.
+          </p>
         </div>
-      ) : departments.length === 0 ? (
-        <p className="text-sm text-gray-400 italic">No departments configured yet.</p>
-      ) : (
-        <ul className="space-y-2">
-          {departments.map((dept) => (
-            <li
-              key={dept}
-              className="flex items-center justify-between px-3 py-2.5 bg-gray-50
-                         rounded-lg border border-gray-200"
-            >
-              <span className="text-sm text-gray-800">{dept}</span>
-              <button
-                onClick={() => removeDept(dept)}
-                disabled={removing}
-                className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600
-                           disabled:opacity-50 transition-colors"
-                title="Remove"
+
+        {/* Add form */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="New department name…"
+            value={newDept}
+            onChange={(e) => setNewDept(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            className="input-base flex-1"
+          />
+          <button
+            onClick={handleAdd}
+            disabled={adding || !newDept.trim()}
+            className="btn-primary shrink-0"
+          >
+            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add
+          </button>
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <div className="space-y-2 animate-pulse">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-50 rounded-xl" />
+            ))}
+          </div>
+        ) : departments.length === 0 ? (
+          <div className="flex flex-col items-center py-8 text-center">
+            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-2">
+              <Plus className="h-5 w-5 text-gray-300" />
+            </div>
+            <p className="text-sm text-gray-400">No departments configured yet.</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {departments.map((dept) => (
+              <li
+                key={dept}
+                className="flex items-center justify-between px-4 py-3 bg-gray-50
+                           rounded-xl border border-gray-100 hover:border-gray-200 transition-colors group"
               >
-                <X className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                <span className="text-sm font-medium text-gray-800">{dept}</span>
+                <button
+                  onClick={() => removeDept(dept)}
+                  disabled={removing}
+                  className="p-1.5 rounded-lg text-gray-300 group-hover:text-gray-400 hover:bg-red-50 hover:text-red-500
+                             disabled:opacity-50 transition-all duration-200"
+                  title="Remove"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -236,7 +246,12 @@ function DepartmentsPanel() {
 export default function AdminSettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+          Settings
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">Configure on-chain thresholds and system departments</p>
+      </div>
       <ThresholdsPanel />
       <DepartmentsPanel />
     </div>

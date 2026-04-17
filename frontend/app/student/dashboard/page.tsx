@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { PlusCircle, RefreshCw, Inbox } from "lucide-react";
+import { PlusCircle, RefreshCw, Inbox, FileText, TrendingUp, MessageSquare, CheckCircle2 } from "lucide-react";
 import GrievanceCard from "@/components/grievance/GrievanceCard";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
@@ -30,11 +30,28 @@ const STATUS_FILTERS: { label: string; value: GrievanceStatus | "all" }[] = [
 
 // ── KPI card ─────────────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, color }: { label: string; value: number; color: string }) {
+function KpiCard({
+  label,
+  value,
+  color,
+  iconBg,
+  icon,
+}: {
+  label: string;
+  value: number;
+  color: string;
+  iconBg: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{label}</p>
+    <div className="stat-card flex flex-col gap-3">
+      <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${iconBg}`}>
+        {icon}
+      </div>
+      <div>
+        <p className={`text-3xl font-bold ${color}`}>{value}</p>
+        <p className="text-xs text-gray-500 mt-0.5 font-medium">{label}</p>
+      </div>
     </div>
   );
 }
@@ -80,19 +97,20 @@ export default function StudentDashboardPage() {
   return (
     <div className="space-y-6">
       {/* ── Page header ────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Grievances</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            My Grievances
+          </h1>
           {user && (
-            <p className="text-sm text-gray-500 mt-0.5">
-              Welcome back, {user.display_name}
+            <p className="text-sm text-gray-500 mt-1">
+              Welcome back, <span className="font-medium text-gray-700">{user.display_name}</span>
             </p>
           )}
         </div>
         <Link
           href="/student/submit"
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg
-                     text-sm font-medium hover:bg-blue-700 transition-colors"
+          className="btn-primary shrink-0"
         >
           <PlusCircle className="h-4 w-4" />
           New Grievance
@@ -100,35 +118,61 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* ── KPIs ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KpiCard label="Total"            value={grievances.length} color="text-gray-900" />
-        <KpiCard label="In Progress"      value={active}            color="text-blue-600"  />
-        <KpiCard label="Awaiting Feedback" value={feedback}          color="text-purple-600" />
-        <KpiCard label="Closed"           value={closed}            color="text-green-600" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <KpiCard
+          label="Total"
+          value={grievances.length}
+          color="text-gray-900"
+          iconBg="bg-gray-100"
+          icon={<FileText className="h-5 w-5 text-gray-600" />}
+        />
+        <KpiCard
+          label="In Progress"
+          value={active}
+          color="text-blue-600"
+          iconBg="bg-blue-50"
+          icon={<TrendingUp className="h-5 w-5 text-blue-600" />}
+        />
+        <KpiCard
+          label="Awaiting Feedback"
+          value={feedback}
+          color="text-purple-600"
+          iconBg="bg-purple-50"
+          icon={<MessageSquare className="h-5 w-5 text-purple-600" />}
+        />
+        <KpiCard
+          label="Closed"
+          value={closed}
+          color="text-green-600"
+          iconBg="bg-green-50"
+          icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
+        />
       </div>
 
       {/* ── Filter tabs ────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2">
-        {STATUS_FILTERS.map(({ label, value }) => (
-          <button
-            key={value}
-            onClick={() => setFilter(value as GrievanceStatus | "all")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              filter === value
-                ? "bg-blue-600 text-white"
-                : "bg-white border border-gray-200 text-gray-600 hover:border-blue-300"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 flex-nowrap">
+          {STATUS_FILTERS.map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value as GrievanceStatus | "all")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
+                filter === value
+                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-200"
+                  : "bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {/* Refresh button */}
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500
-                     hover:text-gray-800 disabled:opacity-50 transition-colors"
+          className="ml-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500
+                     hover:text-gray-800 disabled:opacity-50 transition-colors rounded-lg hover:bg-white"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
           Refresh
@@ -165,7 +209,7 @@ function GrievanceSkeleton() {
       {[...Array(3)].map((_, i) => (
         <div
           key={i}
-          className="h-28 bg-white rounded-xl border border-gray-200 animate-pulse"
+          className="h-28 bg-white rounded-2xl border border-gray-100 animate-shimmer"
         />
       ))}
     </div>
@@ -174,16 +218,22 @@ function GrievanceSkeleton() {
 
 function EmptyState({ hasGrievances }: { hasGrievances: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <Inbox className="h-10 w-10 text-gray-300 mb-3" />
-      <p className="text-sm font-medium text-gray-700">
+    <div className="card flex flex-col items-center justify-center py-20 text-center px-6">
+      <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+        <Inbox className="h-8 w-8 text-gray-300" />
+      </div>
+      <p className="text-base font-semibold text-gray-700">
         {hasGrievances ? "No grievances match this filter" : "No grievances yet"}
+      </p>
+      <p className="text-sm text-gray-400 mt-1 max-w-xs">
+        {hasGrievances
+          ? "Try selecting a different filter above."
+          : "Submit your first grievance to get started. All submissions are recorded on-chain."}
       </p>
       {!hasGrievances && (
         <Link
           href="/student/submit"
-          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white
-                     rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          className="btn-primary mt-6"
         >
           <PlusCircle className="h-4 w-4" />
           Submit your first grievance
@@ -195,11 +245,15 @@ function EmptyState({ hasGrievances }: { hasGrievances: boolean }) {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <p className="text-sm text-red-600 font-medium">Failed to load grievances</p>
+    <div className="card flex flex-col items-center justify-center py-20 text-center px-6">
+      <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+        <span className="text-2xl">⚠️</span>
+      </div>
+      <p className="text-sm font-semibold text-red-600">Failed to load grievances</p>
+      <p className="text-xs text-gray-400 mt-1">There was a problem connecting to the server.</p>
       <button
         onClick={onRetry}
-        className="mt-3 text-sm text-blue-600 hover:underline"
+        className="btn-secondary mt-4 text-xs"
       >
         Try again
       </button>

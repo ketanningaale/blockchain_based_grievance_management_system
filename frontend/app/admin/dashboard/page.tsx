@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, BarChart2, TrendingUp, CheckCircle2, MessageSquare, AlertTriangle, FileText } from "lucide-react";
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -31,11 +31,26 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
 
-function Kpi({ label, value, color }: { label: string; value: number; color: string }) {
+function Kpi({
+  label,
+  value,
+  color,
+  iconBg,
+  icon,
+}: {
+  label: string;
+  value: number;
+  color: string;
+  iconBg: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="stat-card">
+      <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${iconBg} mb-3`}>
+        {icon}
+      </div>
       <p className={`text-3xl font-bold ${color}`}>{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{label}</p>
+      <p className="text-xs text-gray-500 mt-0.5 font-medium">{label}</p>
     </div>
   );
 }
@@ -75,45 +90,82 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Analytics Overview</h1>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            Analytics Overview
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Real-time system metrics and grievance statistics</p>
+        </div>
         <button
           onClick={() => refetchOv()}
           disabled={ovFetching}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600
-                     hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors"
+          className="btn-secondary text-xs"
         >
-          <RefreshCw className={`h-4 w-4 ${ovFetching ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-3.5 w-3.5 ${ovFetching ? "animate-spin" : ""}`} />
           Refresh
         </button>
       </div>
 
       {/* KPI row */}
       {ovLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-24 bg-white border border-gray-200 rounded-xl animate-pulse" />
+            <div key={i} className="h-32 bg-white border border-gray-100 rounded-2xl animate-shimmer" />
           ))}
         </div>
       ) : overview ? (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <Kpi label="Total"            value={overview.total}             color="text-gray-900"   />
-          <Kpi label="In Progress"      value={overview.pending}           color="text-blue-600"   />
-          <Kpi label="Resolved"         value={overview.resolved}          color="text-green-600"  />
-          <Kpi label="Awaiting Feedback" value={overview.awaiting_feedback} color="text-purple-600" />
-          <Kpi label="Debarred"         value={overview.debarred}          color="text-red-600"    />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <Kpi
+            label="Total"
+            value={overview.total}
+            color="text-gray-900"
+            iconBg="bg-gray-100"
+            icon={<FileText className="h-5 w-5 text-gray-600" />}
+          />
+          <Kpi
+            label="In Progress"
+            value={overview.pending}
+            color="text-blue-600"
+            iconBg="bg-blue-50"
+            icon={<TrendingUp className="h-5 w-5 text-blue-600" />}
+          />
+          <Kpi
+            label="Resolved"
+            value={overview.resolved}
+            color="text-green-600"
+            iconBg="bg-green-50"
+            icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
+          />
+          <Kpi
+            label="Awaiting Feedback"
+            value={overview.awaiting_feedback}
+            color="text-purple-600"
+            iconBg="bg-purple-50"
+            icon={<MessageSquare className="h-5 w-5 text-purple-600" />}
+          />
+          <Kpi
+            label="Debarred"
+            value={overview.debarred}
+            color="text-red-600"
+            iconBg="bg-red-50"
+            icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
+          />
         </div>
       ) : null}
 
       {/* Charts row */}
       <div className="grid md:grid-cols-2 gap-5">
         {/* Pie: by status */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-            By Status
-          </h2>
+        <div className="card-elevated p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+              <BarChart2 className="h-4 w-4 text-blue-600" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-800">By Status</h2>
+          </div>
           {ovLoading ? (
-            <div className="h-64 bg-gray-50 rounded-lg animate-pulse" />
+            <div className="h-64 bg-gray-50 rounded-xl animate-pulse" />
           ) : pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -136,37 +188,43 @@ export default function AdminDashboardPage() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">
+            <div className="h-64 flex flex-col items-center justify-center text-sm text-gray-400 gap-2">
+              <BarChart2 className="h-8 w-8 text-gray-200" />
               No data yet
             </div>
           )}
         </div>
 
         {/* Bar: by department */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-            By Department
-          </h2>
+        <div className="card-elevated p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <BarChart2 className="h-4 w-4 text-indigo-600" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-800">By Department</h2>
+          </div>
           {deptLoading ? (
-            <div className="h-64 bg-gray-50 rounded-lg animate-pulse" />
+            <div className="h-64 bg-gray-50 rounded-xl animate-pulse" />
           ) : barData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={barData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} allowDecimals={false} />
                 <Tooltip
                   labelFormatter={(label) =>
                     barData.find((d) => d.name === label)?.fullName ?? label
                   }
+                  contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)" }}
                 />
                 <Legend iconType="square" iconSize={10} />
-                <Bar dataKey="Total"    fill="#93c5fd" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Resolved" fill="#22c55e" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Total"    fill="#93c5fd" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Resolved" fill="#4ade80" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">
+            <div className="h-64 flex flex-col items-center justify-center text-sm text-gray-400 gap-2">
+              <BarChart2 className="h-8 w-8 text-gray-200" />
               No department data yet
             </div>
           )}
