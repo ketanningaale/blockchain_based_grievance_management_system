@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, Lock, Mail } from "lucide-react";
+import { Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
 
@@ -63,7 +63,6 @@ export default function LoginPage() {
   useEffect(() => {
     if (!loading && user) {
       // Persist role to the cookie that Edge middleware reads for UX redirects.
-      // (Not trusted for security — the backend always re-validates the Bearer token.)
       document.cookie = `grievance_role=${user.role}; path=/; SameSite=Lax; max-age=${60 * 60 * 24 * 7}`;
       router.replace(ROLE_ROUTES[user.role] ?? "/student/dashboard");
     }
@@ -77,7 +76,6 @@ export default function LoginPage() {
       // Redirect is handled by the useEffect above once onAuthStateChanged fires
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
-      // Make Firebase error codes human-readable
       const friendly = raw.includes("user-not-found") || raw.includes("wrong-password") || raw.includes("invalid-credential")
         ? "Invalid email or password."
         : raw.includes("too-many-requests")
@@ -90,94 +88,112 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 space-y-6">
+    <>
       <Suspense fallback={null}>
         <RegisteredToast />
       </Suspense>
-      {/* Header */}
-      <div className="text-center space-y-1">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-        <p className="text-sm text-gray-500">Sign in to your Grievance Portal account</p>
+
+      {/* Header above card */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 mb-4 animate-float">
+          <ShieldCheck className="h-8 w-8 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
+          Welcome back
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">Sign in to your Grievance Portal account</p>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Email */}
-        <div className="space-y-1">
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email address
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@institute.edu"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:bg-gray-50 disabled:text-gray-400"
-              disabled={submitting}
-              {...register("email")}
-            />
+      {/* Card */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-8 space-y-6">
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@institute.edu"
+                className="input-base pl-10"
+                disabled={submitting}
+                {...register("email")}
+              />
+            </div>
+            {errors.email && (
+              <p className="text-xs text-red-600 flex items-center gap-1 mt-1">{errors.email.message}</p>
+            )}
           </div>
-          {errors.email && (
-            <p className="text-xs text-red-600">{errors.email.message}</p>
+
+          {/* Password */}
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="input-base pl-10"
+                disabled={submitting}
+                {...register("password")}
+              />
+            </div>
+            {errors.password && (
+              <p className="text-xs text-red-600 mt-1">{errors.password.message}</p>
+            )}
+          </div>
+
+          {/* Server-side / Firebase error */}
+          {formError && (
+            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {formError}
+            </div>
           )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary w-full py-3"
+          >
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitting ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-white px-3 text-xs text-gray-400">or</span>
+          </div>
         </div>
 
-        {/* Password */}
-        <div className="space-y-1">
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:bg-gray-50 disabled:text-gray-400"
-              disabled={submitting}
-              {...register("password")}
-            />
-          </div>
-          {errors.password && (
-            <p className="text-xs text-red-600">{errors.password.message}</p>
-          )}
-        </div>
+        {/* Footer */}
+        <p className="text-center text-sm text-gray-500">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-blue-600 font-semibold hover:text-indigo-600 transition-colors">
+            Register
+          </Link>
+        </p>
+      </div>
 
-        {/* Server-side / Firebase error */}
-        {formError && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {formError}
-          </div>
-        )}
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 text-white
-                     rounded-lg font-medium text-sm hover:bg-blue-700 focus:outline-none focus:ring-2
-                     focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed
-                     transition-colors"
-        >
-          {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {submitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-
-      {/* Footer */}
-      <p className="text-center text-sm text-gray-500">
-        Don&apos;t have an account?{" "}
-        <Link href="/register" className="text-blue-600 font-medium hover:underline">
-          Register
-        </Link>
+      {/* Bottom badge */}
+      <p className="text-center text-xs text-gray-400 mt-6 flex items-center justify-center gap-1.5">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        Secured by blockchain — immutable audit trail
       </p>
-    </div>
+    </>
   );
 }

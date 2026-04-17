@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Mail, Lock, User, Building2 } from "lucide-react";
+import { Loader2, Mail, Lock, User, Building2, UserPlus } from "lucide-react";
 import api from "@/lib/api";
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -58,14 +58,13 @@ export default function RegisterPage() {
         department:   data.department ?? "",
       });
       // Backend created the Firebase user and set the student role claim.
-      // Redirect to login with a success toast trigger.
       router.push("/login?registered=true");
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
       const friendly = raw.includes("already")
         ? "An account with this email already exists."
         : raw.includes("domain") || raw.includes("institute")
-        ? raw // backend sends an actionable message for domain validation
+        ? raw
         : "Registration failed. Please try again.";
       setFormError(friendly);
     } finally {
@@ -74,164 +73,159 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-1">
-        <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
-        <p className="text-sm text-gray-500">
+    <>
+      {/* Header above card */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 mb-4">
+          <UserPlus className="h-8 w-8 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
+          Create account
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">
           Register with your institute email to get started
         </p>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Display name */}
-        <div className="space-y-1">
-          <label htmlFor="display_name" className="block text-sm font-medium text-gray-700">
-            Full name
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              id="display_name"
-              type="text"
-              autoComplete="name"
-              placeholder="Jane Doe"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:bg-gray-50 disabled:text-gray-400"
-              disabled={submitting}
-              {...register("display_name")}
-            />
+      {/* Card */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-8 space-y-6">
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          {/* Display name */}
+          <div className="space-y-1.5">
+            <label htmlFor="display_name" className="block text-sm font-medium text-gray-700">
+              Full name
+            </label>
+            <div className="relative">
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                id="display_name"
+                type="text"
+                autoComplete="name"
+                placeholder="Jane Doe"
+                className="input-base pl-10"
+                disabled={submitting}
+                {...register("display_name")}
+              />
+            </div>
+            {errors.display_name && (
+              <p className="text-xs text-red-600">{errors.display_name.message}</p>
+            )}
           </div>
-          {errors.display_name && (
-            <p className="text-xs text-red-600">{errors.display_name.message}</p>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Institute email
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@institute.edu"
+                className="input-base pl-10"
+                disabled={submitting}
+                {...register("email")}
+              />
+            </div>
+            {errors.email && (
+              <p className="text-xs text-red-600">{errors.email.message}</p>
+            )}
+          </div>
+
+          {/* Department (optional) */}
+          <div className="space-y-1.5">
+            <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+              Department <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div className="relative">
+              <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                id="department"
+                type="text"
+                placeholder="Computer Engineering"
+                className="input-base pl-10"
+                disabled={submitting}
+                {...register("department")}
+              />
+            </div>
+            {errors.department && (
+              <p className="text-xs text-red-600">{errors.department.message}</p>
+            )}
+          </div>
+
+          {/* Password */}
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                className="input-base pl-10"
+                disabled={submitting}
+                {...register("password")}
+              />
+            </div>
+            {errors.password && (
+              <p className="text-xs text-red-600">{errors.password.message}</p>
+            )}
+          </div>
+
+          {/* Confirm password */}
+          <div className="space-y-1.5">
+            <label htmlFor="confirm_password" className="block text-sm font-medium text-gray-700">
+              Confirm password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                id="confirm_password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                className="input-base pl-10"
+                disabled={submitting}
+                {...register("confirm_password")}
+              />
+            </div>
+            {errors.confirm_password && (
+              <p className="text-xs text-red-600">{errors.confirm_password.message}</p>
+            )}
+          </div>
+
+          {/* Server error */}
+          {formError && (
+            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {formError}
+            </div>
           )}
-        </div>
 
-        {/* Email */}
-        <div className="space-y-1">
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Institute email
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@institute.edu"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:bg-gray-50 disabled:text-gray-400"
-              disabled={submitting}
-              {...register("email")}
-            />
-          </div>
-          {errors.email && (
-            <p className="text-xs text-red-600">{errors.email.message}</p>
-          )}
-        </div>
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary w-full py-3 mt-2"
+          >
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitting ? "Creating account…" : "Create account"}
+          </button>
+        </form>
 
-        {/* Department (optional) */}
-        <div className="space-y-1">
-          <label htmlFor="department" className="block text-sm font-medium text-gray-700">
-            Department <span className="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <div className="relative">
-            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              id="department"
-              type="text"
-              placeholder="Computer Engineering"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:bg-gray-50 disabled:text-gray-400"
-              disabled={submitting}
-              {...register("department")}
-            />
-          </div>
-          {errors.department && (
-            <p className="text-xs text-red-600">{errors.department.message}</p>
-          )}
-        </div>
-
-        {/* Password */}
-        <div className="space-y-1">
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Min 8 chars, 1 uppercase, 1 number"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:bg-gray-50 disabled:text-gray-400"
-              disabled={submitting}
-              {...register("password")}
-            />
-          </div>
-          {errors.password && (
-            <p className="text-xs text-red-600">{errors.password.message}</p>
-          )}
-        </div>
-
-        {/* Confirm password */}
-        <div className="space-y-1">
-          <label htmlFor="confirm_password" className="block text-sm font-medium text-gray-700">
-            Confirm password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              id="confirm_password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:bg-gray-50 disabled:text-gray-400"
-              disabled={submitting}
-              {...register("confirm_password")}
-            />
-          </div>
-          {errors.confirm_password && (
-            <p className="text-xs text-red-600">{errors.confirm_password.message}</p>
-          )}
-        </div>
-
-        {/* Server error */}
-        {formError && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {formError}
-          </div>
-        )}
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 text-white
-                     rounded-lg font-medium text-sm hover:bg-blue-700 focus:outline-none focus:ring-2
-                     focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed
-                     transition-colors"
-        >
-          {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {submitting ? "Creating account…" : "Create account"}
-        </button>
-      </form>
-
-      {/* Footer */}
-      <p className="text-center text-sm text-gray-500">
-        Already have an account?{" "}
-        <Link href="/login" className="text-blue-600 font-medium hover:underline">
-          Sign in
-        </Link>
-      </p>
-    </div>
+        {/* Footer */}
+        <p className="text-center text-sm text-gray-500">
+          Already have an account?{" "}
+          <Link href="/login" className="text-blue-600 font-semibold hover:text-indigo-600 transition-colors">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </>
   );
 }
