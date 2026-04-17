@@ -83,8 +83,6 @@ contract GrievanceSystem is ReentrancyGuard, Pausable {
         uint256             yesCount;
         uint256             noCount;
         bool                executed;
-        mapping(address => bool) hasVoted;
-        mapping(address => bool) inFavor;
     }
 
     // ── Storage ──────────────────────────────────────────────────────────────
@@ -99,6 +97,13 @@ contract GrievanceSystem is ReentrancyGuard, Pausable {
 
     // grievanceId → CommitteeVote (only one pending vote per grievance at a time)
     mapping(uint256 => CommitteeVote) private _committeeVotes;
+
+    // grievanceId → round counter; incremented each time a proposal is reset
+    // so old hasVoted entries become unreachable without needing to delete mappings
+    mapping(uint256 => uint256) private _voteRound;
+
+    // grievanceId → round → voter → hasVoted
+    mapping(uint256 => mapping(uint256 => mapping(address => bool))) private _hasVotedInRound;
 
     // grievanceId → voter address → voted (prevents double voting on upvote/downvote)
     mapping(uint256 => mapping(address => bool)) private _hasVotedOnGrievance;
@@ -342,18 +347,22 @@ contract GrievanceSystem is ReentrancyGuard, Pausable {
 
         CommitteeVote storage cv = _committeeVotes[id];
 
-        // If a new proposal or a different action proposed — reset
+        // If the previous proposal was executed or a different action is proposed, start a
+        // new round. Incrementing the round makes all prior hasVoted entries unreachable
+        // without relying on `delete` (which cannot clear nested mappings in Solidity).
         if (cv.executed || cv.proposedAction != proposedAction) {
-            delete _committeeVotes[id];
-            cv.proposedAction   = proposedAction;
-            cv.remarksIpfsCid   = remarksIpfsCid;
-            cv.executed         = false;
+            _voteRound[id]++;
+            cv.proposedAction = proposedAction;
+            cv.remarksIpfsCid = remarksIpfsCid;
+            cv.yesCount       = 0;
+            cv.noCount        = 0;
+            cv.executed       = false;
         }
 
-        require(!cv.hasVoted[msg.sender], "GS: already voted on this proposal");
+        uint256 round = _voteRound[id];
+        require(!_hasVotedInRound[id][round][msg.sender], "GS: already voted on this proposal");
 
-        cv.hasVoted[msg.sender] = true;
-        cv.inFavor[msg.sender]  = true;
+        _hasVotedInRound[id][round][msg.sender] = true;
         cv.yesCount++;
 
         emit CommitteeVoteCast(id, msg.sender, proposedAction, true, cv.yesCount, cv.noCount);
