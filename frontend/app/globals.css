@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* cache-bust: 1 */
 
 @layer base {
   :root {
