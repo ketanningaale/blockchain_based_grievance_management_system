@@ -11,9 +11,9 @@ import api from "@/lib/api";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Thresholds {
-  committee_threshold_hours: number;
-  hod_threshold_hours:       number;
-  principal_threshold_hours: number;
+  committee_days: number;
+  hod_days:       number;
+  principal_days: number;
 }
 
 // ── Fetch ──────────────────────────────────────────────────────────────────────
@@ -32,9 +32,9 @@ function ThresholdsPanel() {
   });
 
   const [form, setForm] = useState<Thresholds>({
-    committee_threshold_hours: 72,
-    hod_threshold_hours:       48,
-    principal_threshold_hours: 48,
+    committee_days: 3,
+    hod_days:       2,
+    principal_days: 2,
   });
 
   // Sync server data into local form once loaded
@@ -53,19 +53,19 @@ function ThresholdsPanel() {
 
   const fields: { key: keyof Thresholds; label: string; desc: string }[] = [
     {
-      key:   "committee_threshold_hours",
+      key:   "committee_days",
       label: "Committee threshold",
-      desc:  "Hours before a grievance at Committee is auto-forwarded to HoD",
+      desc:  "Days before a grievance at Committee is auto-forwarded to HoD",
     },
     {
-      key:   "hod_threshold_hours",
+      key:   "hod_days",
       label: "HoD threshold",
-      desc:  "Hours before a grievance at HoD is auto-forwarded to Principal",
+      desc:  "Days before a grievance at HoD is auto-forwarded to Principal",
     },
     {
-      key:   "principal_threshold_hours",
+      key:   "principal_days",
       label: "Principal threshold",
-      desc:  "Hours before the admin is alerted if Principal hasn't acted",
+      desc:  "Days before the admin is alerted if Principal hasn't acted",
     },
   ];
 
@@ -108,7 +108,7 @@ function ThresholdsPanel() {
                     className="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm text-right
                                focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white transition-all"
                   />
-                  <span className="text-xs font-medium text-gray-500 whitespace-nowrap">hrs</span>
+                  <span className="text-xs font-medium text-gray-500 whitespace-nowrap">days</span>
                 </div>
               </div>
             ))}
@@ -150,7 +150,7 @@ function DepartmentsPanel() {
   });
 
   const { mutate: removeDept, isPending: removing } = useMutation({
-    mutationFn: (name: string) => api.delete("/api/v1/admin/departments", { data: { name } }),
+    mutationFn: (name: string) => api.delete(`/api/v1/admin/departments/${encodeURIComponent(name)}`),
     onSuccess:  () => {
       toast.success("Department removed.");
       qc.invalidateQueries({ queryKey: ["admin-departments"] });

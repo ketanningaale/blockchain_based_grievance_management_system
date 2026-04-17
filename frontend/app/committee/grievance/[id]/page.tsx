@@ -135,8 +135,12 @@ function ProposePanel({
   const [remarks, setRemarks] = useState("");
 
   const propose = useMutation({
-    mutationFn: () =>
-      api.post(`/api/v1/committee/${id}/propose`, { action, remarks }),
+    mutationFn: () => {
+      const form = new FormData();
+      form.append("action", action ?? "");
+      form.append("remarks", remarks);
+      return api.post(`/api/v1/committee/${id}/propose`, form);
+    },
     onSuccess: () => {
       toast.success("Vote cast on-chain.");
       setRemarks("");
