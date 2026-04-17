@@ -11,19 +11,19 @@ import type { GrievanceDetail } from "@/types";
 
 const HOD_ACTIONS: ActionOption[] = [
   {
-    value: "Forward",
+    value: "forward",
     label: "Forward to Principal",
     color: "border-blue-400 bg-blue-50 text-blue-700",
     desc:  "Escalate the grievance to the Principal for final decision.",
   },
   {
-    value: "Resolve",
+    value: "resolve",
     label: "Mark Resolved",
     color: "border-green-400 bg-green-50 text-green-700",
     desc:  "Grievance has been satisfactorily addressed at HoD level.",
   },
   {
-    value: "Revert",
+    value: "revert",
     label: "Revert to Committee",
     color: "border-amber-400 bg-amber-50 text-amber-700",
     desc:  "Send back for further investigation or additional information.",

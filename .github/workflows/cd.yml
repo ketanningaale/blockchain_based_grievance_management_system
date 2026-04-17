@@ -58,7 +58,7 @@ jobs:
         #   VERCEL_TOKEN      — from vercel.com → Settings → Tokens
         #   VERCEL_ORG_ID     — from .vercel/project.json after `vercel link`
         #   VERCEL_PROJECT_ID — from .vercel/project.json after `vercel link`
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
         working-directory: frontend
         env:
           VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}

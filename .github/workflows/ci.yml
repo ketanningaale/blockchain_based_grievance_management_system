@@ -82,8 +82,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        # npm install (not ci) because package-lock.json is gitignored
-        run: npm install
+        run: npm ci
 
       - name: Create stub .env.local
         working-directory: frontend
