@@ -182,11 +182,11 @@ async def list_departments(
     current_user: dict              = Depends(require_role("admin", "committee", "hod", "principal", "student")),
     fb:           FirebaseService   = Depends(get_firebase_service),
     settings:     Settings          = Depends(get_settings),
-) -> dict:
+) -> list:
     """Returns the list of departments. Used to populate dropdowns in the frontend."""
     institute = fb.get_institute(settings.institute_id)
     departments = institute.get("departments", []) if institute else []
-    return {"departments": departments}
+    return departments
 
 
 @router.post(
@@ -265,7 +265,6 @@ async def analytics_by_dept(
     current_user: dict              = Depends(require_role("admin", "principal")),
     fb:           FirebaseService   = Depends(get_firebase_service),
     settings:     Settings          = Depends(get_settings),
-) -> dict:
+) -> list:
     """Returns total and resolved counts per department for the bar chart."""
-    data = fb.get_grievances_by_department(settings.institute_id)
-    return {"departments": data}
+    return fb.get_grievances_by_department(settings.institute_id)

@@ -39,8 +39,12 @@ export default function ActionPanel({
   const [done,     setDone]     = useState(false);
 
   const { mutate, isPending } = useMutation({
-    mutationFn: () =>
-      api.post(`/api/v1/${role}/${id}/action`, { action: selected, remarks }),
+    mutationFn: () => {
+      const form = new FormData();
+      form.append("action", selected ?? "");
+      form.append("remarks", remarks);
+      return api.post(`/api/v1/${role}/${id}/action`, form);
+    },
     onSuccess: () => {
       toast.success("Action recorded on-chain.");
       setDone(true);

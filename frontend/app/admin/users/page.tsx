@@ -132,7 +132,7 @@ export default function AdminUsersPage() {
 
   const { mutate: assignRole, isPending: assigning } = useMutation({
     mutationFn: ({ uid, role }: { uid: string; role: Role }) =>
-      api.post("/api/v1/admin/users", { uid, role }),
+      api.post(`/api/v1/admin/users/${uid}/role`, { role }),
     onSuccess: () => {
       toast.success("Role updated. User tokens revoked — they must sign in again.");
       qc.invalidateQueries({ queryKey: ["admin-users"] });
