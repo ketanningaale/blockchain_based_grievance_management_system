@@ -74,26 +74,27 @@ export default function RegisterPage() {
 
   return (
     <>
-      {/* Header above card */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 mb-4">
-          <UserPlus className="h-8 w-8 text-white" />
+      {/* Mobile-only logo */}
+      <div className="lg:hidden text-center mb-6">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 mb-3">
+          <UserPlus className="h-6 w-6 text-white" />
         </div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
-          Create account
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Register with your institute email to get started
-        </p>
+        <p className="text-xs font-semibold text-blue-700 tracking-wide uppercase">Grievance Portal</p>
+      </div>
+
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900">Create account</h1>
+        <p className="text-sm text-slate-500 mt-1">Register with your institute email to get started</p>
       </div>
 
       {/* Card */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-8 space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-6">
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           {/* Display name */}
           <div className="space-y-1.5">
-            <label htmlFor="display_name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="display_name" className="label">
               Full name
             </label>
             <div className="relative">
@@ -115,7 +116,7 @@ export default function RegisterPage() {
 
           {/* Email */}
           <div className="space-y-1.5">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="label">
               Institute email
             </label>
             <div className="relative">
@@ -137,7 +138,7 @@ export default function RegisterPage() {
 
           {/* Department (optional) */}
           <div className="space-y-1.5">
-            <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="department" className="label">
               Department <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <div className="relative">
@@ -158,7 +159,7 @@ export default function RegisterPage() {
 
           {/* Password */}
           <div className="space-y-1.5">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="label">
               Password
             </label>
             <div className="relative">
@@ -180,7 +181,7 @@ export default function RegisterPage() {
 
           {/* Confirm password */}
           <div className="space-y-1.5">
-            <label htmlFor="confirm_password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="confirm_password" className="label">
               Confirm password
             </label>
             <div className="relative">
@@ -219,7 +220,7 @@ export default function RegisterPage() {
         </form>
 
         {/* Footer */}
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-slate-500">
           Already have an account?{" "}
           <Link href="/login" className="text-blue-600 font-semibold hover:text-indigo-600 transition-colors">
             Sign in
