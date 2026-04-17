@@ -71,6 +71,18 @@ app.include_router(principal.router,   prefix="/api/v1/principal",    tags=["pri
 app.include_router(admin.router,       prefix="/api/v1/admin",        tags=["admin"])
 
 
+# ── Root ──────────────────────────────────────────────────────────────────────
+
+@app.get("/", tags=["health"])
+async def root() -> dict:
+    return {
+        "name":    "Grievance Redressal System API",
+        "version": "1.0.0",
+        "status":  "running",
+        "docs":    "/docs" if not settings.is_production else "disabled in production",
+    }
+
+
 # ── Health check ──────────────────────────────────────────────────────────────
 
 @app.get("/health", tags=["health"])
