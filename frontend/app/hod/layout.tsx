@@ -1,6 +1,6 @@
 "use client";
 
-import StaffLayout from "@/components/layout/StaffLayout";
+import AppShell from "@/components/layout/AppShell";
 import { LayoutDashboard } from "lucide-react";
 
 const NAV = [
@@ -8,5 +8,9 @@ const NAV = [
 ];
 
 export default function HoDLayout({ children }: { children: React.ReactNode }) {
-  return <StaffLayout nav={NAV}>{children}</StaffLayout>;
+  return (
+    <AppShell nav={NAV} roleLabel="HoD Portal" pageTitle="HoD Portal">
+      {children}
+    </AppShell>
+  );
 }

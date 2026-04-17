@@ -1,6 +1,6 @@
 "use client";
 
-import StaffLayout from "@/components/layout/StaffLayout";
+import AppShell from "@/components/layout/AppShell";
 import { LayoutDashboard, Users, Settings } from "lucide-react";
 
 const NAV = [
@@ -10,5 +10,9 @@ const NAV = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <StaffLayout nav={NAV}>{children}</StaffLayout>;
+  return (
+    <AppShell nav={NAV} roleLabel="Admin Portal" pageTitle="Admin Portal">
+      {children}
+    </AppShell>
+  );
 }
