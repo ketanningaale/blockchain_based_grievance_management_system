@@ -240,7 +240,7 @@ function VotePanel({
 
   const { mutate, isPending } = useMutation({
     mutationFn: (direction: "up" | "down") =>
-      api.post(`/api/v1/grievances/${id}/vote`, { direction }),
+      api.post(`/api/v1/grievances/${id}/vote`, { is_upvote: direction === "up" }),
     onSuccess: (_, dir) => {
       setVoted(dir);
       toast.success("Vote recorded on-chain.");
@@ -298,7 +298,7 @@ function FeedbackPanel({ id }: { id: number }) {
   const { mutate, isPending } = useMutation({
     mutationFn: () =>
       api.post(`/api/v1/grievances/${id}/feedback`, {
-        satisfied,
+        is_satisfied: satisfied,
         remarks: remarks || undefined,
       }),
     onSuccess: () => {

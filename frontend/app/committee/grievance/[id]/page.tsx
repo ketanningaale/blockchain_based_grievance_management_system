@@ -24,7 +24,7 @@ import type { GrievanceDetail, VoteTally, ActionHistoryItem } from "@/types";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type CommitteeAction = "Forward" | "Resolve" | "Debar";
+type CommitteeAction = "forward" | "resolve" | "debar";
 
 interface IPFSContent {
   title:       string;
@@ -102,19 +102,19 @@ function TallyBar({ tally }: { tally: VoteTally }) {
 
 const ACTION_OPTIONS: { value: CommitteeAction; label: string; color: string; desc: string }[] = [
   {
-    value: "Forward",
+    value: "forward",
     label: "Forward to HoD",
     color: "border-blue-400 bg-blue-50 text-blue-700",
     desc:  "Escalate the grievance to the Head of Department for further review.",
   },
   {
-    value: "Resolve",
+    value: "resolve",
     label: "Mark Resolved",
     color: "border-green-400 bg-green-50 text-green-700",
     desc:  "Grievance has been satisfactorily addressed at committee level.",
   },
   {
-    value: "Debar",
+    value: "debar",
     label: "Debar",
     color: "border-red-400 bg-red-50 text-red-700",
     desc:  "Mark as invalid / malicious. This is irreversible once executed.",

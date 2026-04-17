@@ -11,13 +11,13 @@ import type { GrievanceDetail } from "@/types";
 
 const PRINCIPAL_ACTIONS: ActionOption[] = [
   {
-    value: "Resolve",
+    value: "resolve",
     label: "Mark Resolved",
     color: "border-green-400 bg-green-50 text-green-700",
     desc:  "Final resolution at the highest authority level.",
   },
   {
-    value: "Revert",
+    value: "revert",
     label: "Revert to HoD",
     color: "border-amber-400 bg-amber-50 text-amber-700",
     desc:  "Return to the Head of Department for further review or clarification.",
