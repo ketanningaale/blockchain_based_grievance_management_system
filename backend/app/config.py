@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # ── App ───────────────────────────────────────────────────────────────────
     app_env: str = "development"
     secret_key: str = "change-me"
-    allowed_origins: str = "http://localhost:3000"
+    allowed_origins: str = "*"
 
     @property
     def origins_list(self) -> list[str]:
