@@ -35,22 +35,17 @@ const SEVEN_DAYS  = 7 * 24 * 60 * 60;
 const FIVE_DAYS   = 5 * 24 * 60 * 60;
 const THREE_DAYS  = 3 * 24 * 60 * 60;
 
-const STUDENT_ROLE   = ethers.keccak256(ethers.toUtf8Bytes("STUDENT_ROLE"));
-const COMMITTEE_ROLE = ethers.keccak256(ethers.toUtf8Bytes("COMMITTEE_ROLE"));
-const HOD_ROLE       = ethers.keccak256(ethers.toUtf8Bytes("HOD_ROLE"));
-const PRINCIPAL_ROLE = ethers.keccak256(ethers.toUtf8Bytes("PRINCIPAL_ROLE"));
+// Simulated Firebase UID hashes (relay wallet passes these on behalf of users)
+const STUDENT1_ID   = ethers.keccak256(ethers.toUtf8Bytes("firebase-uid-student1"));
+const STUDENT2_ID   = ethers.keccak256(ethers.toUtf8Bytes("firebase-uid-student2"));
+const COMMITTEE1_ID = ethers.keccak256(ethers.toUtf8Bytes("firebase-uid-committee1"));
+const COMMITTEE2_ID = ethers.keccak256(ethers.toUtf8Bytes("firebase-uid-committee2"));
+const COMMITTEE3_ID = ethers.keccak256(ethers.toUtf8Bytes("firebase-uid-committee3"));
 
 // ── Fixture ──────────────────────────────────────────────────────────────────
 
 async function deployFixture() {
-  const [
-    admin,
-    student1, student2,
-    committee1, committee2, committee3,
-    hod,
-    principal,
-    stranger,
-  ] = await ethers.getSigners();
+  const [admin, stranger] = await ethers.getSigners();
 
   // Deploy RoleManager
   const RMFactory = await ethers.getContractFactory("RoleManager");
@@ -65,29 +60,23 @@ async function deployFixture() {
   );
   await gs.waitForDeployment();
 
-  // Assign roles
-  await roleManager.connect(admin).grantUserRole(STUDENT_ROLE,   student1.address);
-  await roleManager.connect(admin).grantUserRole(STUDENT_ROLE,   student2.address);
-  await roleManager.connect(admin).grantUserRole(COMMITTEE_ROLE, committee1.address);
-  await roleManager.connect(admin).grantUserRole(COMMITTEE_ROLE, committee2.address);
-  await roleManager.connect(admin).grantUserRole(COMMITTEE_ROLE, committee3.address);
-  await roleManager.connect(admin).grantUserRole(HOD_ROLE,       hod.address);
-  await roleManager.connect(admin).grantUserRole(PRINCIPAL_ROLE, principal.address);
-
-  // Set committee size to 3 (matches the 3 committee accounts above)
+  // Set committee size to 3
   await gs.connect(admin).setCommitteeSize(3);
 
-  return { gs, roleManager, admin, student1, student2, committee1, committee2, committee3, hod, principal, stranger };
+  return { gs, roleManager, admin, stranger };
 }
 
-// ── Helper: submit a grievance and return its ID ─────────────────────────────
+// ── Helper: submit a grievance as relay wallet and return its ID ─────────────
 
-async function submitGrievance(gs: GrievanceSystem, student: SignerWithAddress): Promise<bigint> {
-  const tx = await gs.connect(student).submitGrievance(
-    "Academic", "Exam Related", "Computer Engineering", SAMPLE_CID, false
+async function submitGrievance(
+  gs: GrievanceSystem,
+  admin: SignerWithAddress,
+  studentId: string = STUDENT1_ID,
+): Promise<bigint> {
+  const tx = await gs.connect(admin).submitGrievance(
+    "Academic", "Exam Related", "Computer Engineering", SAMPLE_CID, false, studentId
   );
   const receipt = await tx.wait();
-  // Parse GrievanceSubmitted event to get the ID
   const iface = gs.interface;
   for (const log of receipt!.logs) {
     try {
@@ -102,12 +91,13 @@ async function submitGrievance(gs: GrievanceSystem, student: SignerWithAddress):
 
 async function reachCommitteeVote(
   gs: GrievanceSystem,
+  admin: SignerWithAddress,
   grievanceId: bigint,
   action: ActionType,
-  members: SignerWithAddress[]
+  memberIds: string[] = [COMMITTEE1_ID, COMMITTEE2_ID],
 ) {
-  for (const member of members) {
-    await gs.connect(member).committeePropose(grievanceId, action, REMARK_CID);
+  for (const memberId of memberIds) {
+    await gs.connect(admin).committeePropose(grievanceId, action, REMARK_CID, memberId);
   }
 }
 
@@ -144,112 +134,134 @@ describe("GrievanceSystem", () => {
   // ── submitGrievance ────────────────────────────────────────────────────────
 
   describe("submitGrievance", () => {
-    it("student can submit a grievance", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
+    it("relay wallet (admin) can submit a grievance", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
       await expect(
-        gs.connect(student1).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, false)
+        gs.connect(admin).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, false, STUDENT1_ID)
       ).to.not.be.reverted;
     });
 
     it("increments totalGrievances", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
-      await submitGrievance(gs, student1);
+      const { gs, admin } = await loadFixture(deployFixture);
+      await submitGrievance(gs, admin);
       expect(await gs.totalGrievances()).to.equal(1);
     });
 
     it("status is AtCommittee immediately after submit", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       const g = await gs.getGrievance(id);
       expect(g.status).to.equal(GrievanceStatus.AtCommittee);
     });
 
+    it("stores the correct studentIdentifier", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
+      const g = await gs.getGrievance(id);
+      expect(g.studentIdentifier).to.equal(STUDENT1_ID);
+    });
+
     it("sets thresholdDeadline ~7 days from now", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       const g = await gs.getGrievance(id);
       const now = BigInt(await time.latest());
       expect(g.thresholdDeadline).to.be.closeTo(now + BigInt(SEVEN_DAYS), 5n);
     });
 
-    it("emits GrievanceSubmitted event", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
-      await expect(
-        gs.connect(student1).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, false)
-      ).to.emit(gs, "GrievanceSubmitted");
+    it("emits GrievanceSubmitted event with thresholdDeadline", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const tx = await gs.connect(admin).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, false, STUDENT1_ID);
+      await expect(tx).to.emit(gs, "GrievanceSubmitted");
     });
 
     it("first action in history is Submit", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       const history = await gs.getActionHistory(id);
       expect(history.length).to.equal(1);
       expect(history[0].action).to.equal(ActionType.Submit);
     });
 
-    it("non-student cannot submit", async () => {
+    it("non-admin cannot submit", async () => {
       const { gs, stranger } = await loadFixture(deployFixture);
       await expect(
-        gs.connect(stranger).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, false)
-      ).to.be.revertedWith("GS: caller is not a student");
+        gs.connect(stranger).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, false, STUDENT1_ID)
+      ).to.be.revertedWith("GS: caller is not admin");
     });
 
     it("reverts if category is empty", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
+      const { gs, admin } = await loadFixture(deployFixture);
       await expect(
-        gs.connect(student1).submitGrievance("", "Exam", "CS", SAMPLE_CID, false)
+        gs.connect(admin).submitGrievance("", "Exam", "CS", SAMPLE_CID, false, STUDENT1_ID)
       ).to.be.revertedWith("GS: category required");
     });
 
     it("reverts if IPFS CID is empty", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
+      const { gs, admin } = await loadFixture(deployFixture);
       await expect(
-        gs.connect(student1).submitGrievance("Academic", "Exam", "CS", "", false)
+        gs.connect(admin).submitGrievance("Academic", "Exam", "CS", "", false, STUDENT1_ID)
       ).to.be.revertedWith("GS: IPFS CID required");
     });
 
+    it("reverts if studentId is zero", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      await expect(
+        gs.connect(admin).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, false, ethers.ZeroHash)
+      ).to.be.revertedWith("GS: student ID required");
+    });
+
     it("stores isAnonymous=true correctly", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
-      await gs.connect(student1).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, true);
+      const { gs, admin } = await loadFixture(deployFixture);
+      await gs.connect(admin).submitGrievance("Academic", "Exam", "CS", SAMPLE_CID, true, STUDENT1_ID);
       const g = await gs.getGrievance(1n);
       expect(g.isAnonymous).to.be.true;
     });
   });
 
-  // ── castVote (upvote/downvote) ────────────────────────────────────────────
+  // ── castVote ──────────────────────────────────────────────────────────────
 
   describe("castVote", () => {
-    it("student can upvote a grievance", async () => {
-      const { gs, student1, student2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(student2).castVote(id, true);
+    it("relay wallet can upvote on behalf of a student", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
+      await gs.connect(admin).castVote(id, true, STUDENT2_ID);
       const g = await gs.getGrievance(id);
       expect(g.upvotes).to.equal(1);
     });
 
-    it("student can downvote a grievance", async () => {
-      const { gs, student1, student2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(student2).castVote(id, false);
+    it("relay wallet can downvote on behalf of a student", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
+      await gs.connect(admin).castVote(id, false, STUDENT2_ID);
       const g = await gs.getGrievance(id);
       expect(g.downvotes).to.equal(1);
     });
 
-    it("prevents voting twice on the same grievance", async () => {
-      const { gs, student1, student2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(student2).castVote(id, true);
+    it("prevents the same student (by ID) from voting twice", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
+      await gs.connect(admin).castVote(id, true, STUDENT2_ID);
       await expect(
-        gs.connect(student2).castVote(id, true)
+        gs.connect(admin).castVote(id, true, STUDENT2_ID)
       ).to.be.revertedWith("GS: already voted");
     });
 
-    it("non-student cannot vote", async () => {
-      const { gs, student1, stranger } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+    it("two different students can both vote", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
+      await gs.connect(admin).castVote(id, true, STUDENT1_ID);
+      await gs.connect(admin).castVote(id, true, STUDENT2_ID);
+      const g = await gs.getGrievance(id);
+      expect(g.upvotes).to.equal(2);
+    });
+
+    it("non-admin cannot cast vote", async () => {
+      const { gs, admin, stranger } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
       await expect(
-        gs.connect(stranger).castVote(id, true)
-      ).to.be.revertedWith("GS: caller is not a student");
+        gs.connect(stranger).castVote(id, true, STUDENT2_ID)
+      ).to.be.revertedWith("GS: caller is not admin");
     });
   });
 
@@ -257,24 +269,20 @@ describe("GrievanceSystem", () => {
 
   describe("Committee — Forward", () => {
     it("majority vote forwards grievance to HoD", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-
-      // 2 of 3 votes = majority (>50%)
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Forward);
+      await gs.connect(admin).executeCommitteeAction(id);
 
       const g = await gs.getGrievance(id);
       expect(g.status).to.equal(GrievanceStatus.AtHoD);
     });
 
     it("sets new threshold deadline after forward", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Forward);
+      await gs.connect(admin).executeCommitteeAction(id);
 
       const g = await gs.getGrievance(id);
       const now = BigInt(await time.latest());
@@ -282,27 +290,26 @@ describe("GrievanceSystem", () => {
     });
 
     it("single vote is not enough to execute (no majority)", async () => {
-      const { gs, student1, committee1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await expect(gs.executeCommitteeAction(id)).to.be.revertedWith("GS: majority not reached");
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await gs.connect(admin).committeePropose(id, ActionType.Forward, REMARK_CID, COMMITTEE1_ID);
+      await expect(gs.connect(admin).executeCommitteeAction(id)).to.be.revertedWith("GS: majority not reached");
     });
 
-    it("committee member cannot vote twice", async () => {
-      const { gs, student1, committee1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
+    it("same committee member (by ID) cannot vote twice in the same round", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await gs.connect(admin).committeePropose(id, ActionType.Forward, REMARK_CID, COMMITTEE1_ID);
       await expect(
-        gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID)
+        gs.connect(admin).committeePropose(id, ActionType.Forward, REMARK_CID, COMMITTEE1_ID)
       ).to.be.revertedWith("GS: already voted on this proposal");
     });
 
     it("logs Forward action in history", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Forward);
+      await gs.connect(admin).executeCommitteeAction(id);
 
       const history = await gs.getActionHistory(id);
       const forwardAction = history[history.length - 1];
@@ -310,221 +317,211 @@ describe("GrievanceSystem", () => {
       expect(forwardAction.fromStatus).to.equal(GrievanceStatus.AtCommittee);
       expect(forwardAction.toStatus).to.equal(GrievanceStatus.AtHoD);
     });
+
+    it("non-admin cannot propose", async () => {
+      const { gs, admin, stranger } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await expect(
+        gs.connect(stranger).committeePropose(id, ActionType.Forward, REMARK_CID, COMMITTEE1_ID)
+      ).to.be.revertedWith("GS: caller is not admin");
+    });
   });
 
   describe("Committee — Resolve", () => {
     it("majority vote resolves grievance → AwaitingFeedback", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Resolve);
+      await gs.connect(admin).executeCommitteeAction(id);
 
-      const g = await gs.getGrievance(id);
-      expect(g.status).to.equal(GrievanceStatus.AwaitingFeedback);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AwaitingFeedback);
     });
   });
 
   describe("Committee — Debar", () => {
     it("majority vote debars grievance → Debarred", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Debar, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Debar, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Debar);
+      await gs.connect(admin).executeCommitteeAction(id);
 
-      const g = await gs.getGrievance(id);
-      expect(g.status).to.equal(GrievanceStatus.Debarred);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.Debarred);
     });
 
     it("removes debarred grievance from active list", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Debar, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Debar, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Debar);
+      await gs.connect(admin).executeCommitteeAction(id);
 
       const active = await gs.getActiveGrievanceIds();
       expect(active).to.not.include(id);
     });
 
     it("reverts if already executed", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Debar, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Debar, REMARK_CID);
-      await gs.executeCommitteeAction(id);
-      await expect(gs.executeCommitteeAction(id)).to.be.revertedWith("GS: action already executed");
-    });
-
-    it("non-committee member cannot propose", async () => {
-      const { gs, student1, stranger } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Debar);
+      await gs.connect(admin).executeCommitteeAction(id);
       await expect(
-        gs.connect(stranger).committeePropose(id, ActionType.Debar, REMARK_CID)
-      ).to.be.revertedWith("GS: caller is not committee member");
+        gs.connect(admin).executeCommitteeAction(id)
+      ).to.be.revertedWith("GS: action already executed");
     });
   });
 
   // ── HoD actions ───────────────────────────────────────────────────────────
 
   describe("HoD actions", () => {
-    async function setupAtHoD(fixture: Awaited<ReturnType<typeof deployFixture>>) {
-      const { gs, student1, committee1, committee2 } = fixture;
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+    async function setupAtHoD(gs: GrievanceSystem, admin: SignerWithAddress) {
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Forward);
+      await gs.connect(admin).executeCommitteeAction(id);
       return id;
     }
 
-    it("HoD can forward to Principal", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtHoD(fixture);
-      await fixture.gs.connect(fixture.hod).hodAction(id, ActionType.Forward, REMARK_CID);
-      expect((await fixture.gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtPrincipal);
+    it("relay wallet can forward to Principal on behalf of HoD", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAtHoD(gs, admin);
+      await gs.connect(admin).hodAction(id, ActionType.Forward, REMARK_CID);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtPrincipal);
     });
 
     it("HoD forward sets correct threshold deadline", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtHoD(fixture);
-      await fixture.gs.connect(fixture.hod).hodAction(id, ActionType.Forward, REMARK_CID);
-      const g = await fixture.gs.getGrievance(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAtHoD(gs, admin);
+      await gs.connect(admin).hodAction(id, ActionType.Forward, REMARK_CID);
+      const g = await gs.getGrievance(id);
       const now = BigInt(await time.latest());
       expect(g.thresholdDeadline).to.be.closeTo(now + BigInt(THREE_DAYS), 5n);
     });
 
-    it("HoD can revert to Committee", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtHoD(fixture);
-      await fixture.gs.connect(fixture.hod).hodAction(id, ActionType.Revert, REMARK_CID);
-      expect((await fixture.gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtCommittee);
+    it("relay wallet can revert to Committee on behalf of HoD", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAtHoD(gs, admin);
+      await gs.connect(admin).hodAction(id, ActionType.Revert, REMARK_CID);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtCommittee);
     });
 
-    it("HoD can resolve → AwaitingFeedback", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtHoD(fixture);
-      await fixture.gs.connect(fixture.hod).hodAction(id, ActionType.Resolve, REMARK_CID);
-      expect((await fixture.gs.getGrievance(id)).status).to.equal(GrievanceStatus.AwaitingFeedback);
+    it("relay wallet can resolve → AwaitingFeedback on behalf of HoD", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAtHoD(gs, admin);
+      await gs.connect(admin).hodAction(id, ActionType.Resolve, REMARK_CID);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AwaitingFeedback);
     });
 
-    it("HoD cannot act when grievance is not AtHoD", async () => {
-      const { gs, student1, hod } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1); // AtCommittee, not AtHoD
+    it("reverts if grievance is not AtHoD", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       await expect(
-        gs.connect(hod).hodAction(id, ActionType.Resolve, REMARK_CID)
+        gs.connect(admin).hodAction(id, ActionType.Resolve, REMARK_CID)
       ).to.be.revertedWith("GS: grievance not at HoD level");
     });
 
-    it("non-HoD cannot act", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtHoD(fixture);
+    it("non-admin cannot call hodAction", async () => {
+      const { gs, admin, stranger } = await loadFixture(deployFixture);
+      const id = await setupAtHoD(gs, admin);
       await expect(
-        fixture.gs.connect(fixture.stranger).hodAction(id, ActionType.Resolve, REMARK_CID)
-      ).to.be.revertedWith("GS: caller is not HoD");
+        gs.connect(stranger).hodAction(id, ActionType.Resolve, REMARK_CID)
+      ).to.be.revertedWith("GS: caller is not admin");
     });
   });
 
   // ── Principal actions ─────────────────────────────────────────────────────
 
   describe("Principal actions", () => {
-    async function setupAtPrincipal(fixture: Awaited<ReturnType<typeof deployFixture>>) {
-      const { gs, student1, committee1, committee2, hod } = fixture;
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.executeCommitteeAction(id);
-      await gs.connect(hod).hodAction(id, ActionType.Forward, REMARK_CID);
+    async function setupAtPrincipal(gs: GrievanceSystem, admin: SignerWithAddress) {
+      const id = await submitGrievance(gs, admin);
+      await reachCommitteeVote(gs, admin, id, ActionType.Forward);
+      await gs.connect(admin).executeCommitteeAction(id);
+      await gs.connect(admin).hodAction(id, ActionType.Forward, REMARK_CID);
       return id;
     }
 
-    it("Principal can resolve → AwaitingFeedback", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtPrincipal(fixture);
-      await fixture.gs.connect(fixture.principal).principalAction(id, ActionType.Resolve, REMARK_CID);
-      expect((await fixture.gs.getGrievance(id)).status).to.equal(GrievanceStatus.AwaitingFeedback);
+    it("relay wallet can resolve → AwaitingFeedback on behalf of Principal", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAtPrincipal(gs, admin);
+      await gs.connect(admin).principalAction(id, ActionType.Resolve, REMARK_CID);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AwaitingFeedback);
     });
 
-    it("Principal can revert to HoD", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtPrincipal(fixture);
-      await fixture.gs.connect(fixture.principal).principalAction(id, ActionType.Revert, REMARK_CID);
-      expect((await fixture.gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtHoD);
+    it("relay wallet can revert to HoD on behalf of Principal", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAtPrincipal(gs, admin);
+      await gs.connect(admin).principalAction(id, ActionType.Revert, REMARK_CID);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtHoD);
     });
 
-    it("Principal cannot act when grievance is not AtPrincipal", async () => {
-      const { gs, student1, principal } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+    it("reverts if grievance is not AtPrincipal", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       await expect(
-        gs.connect(principal).principalAction(id, ActionType.Resolve, REMARK_CID)
+        gs.connect(admin).principalAction(id, ActionType.Resolve, REMARK_CID)
       ).to.be.revertedWith("GS: grievance not at Principal level");
     });
 
-    it("non-Principal cannot act", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAtPrincipal(fixture);
+    it("non-admin cannot call principalAction", async () => {
+      const { gs, admin, stranger } = await loadFixture(deployFixture);
+      const id = await setupAtPrincipal(gs, admin);
       await expect(
-        fixture.gs.connect(fixture.stranger).principalAction(id, ActionType.Resolve, REMARK_CID)
-      ).to.be.revertedWith("GS: caller is not Principal");
+        gs.connect(stranger).principalAction(id, ActionType.Resolve, REMARK_CID)
+      ).to.be.revertedWith("GS: caller is not admin");
     });
   });
 
   // ── Student feedback ──────────────────────────────────────────────────────
 
   describe("submitFeedback", () => {
-    async function setupAwaitingFeedback(fixture: Awaited<ReturnType<typeof deployFixture>>) {
-      const { gs, student1, committee1, committee2 } = fixture;
-      const id = await submitGrievance(gs, student1);
-      await gs.connect(committee1).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+    async function setupAwaitingFeedback(gs: GrievanceSystem, admin: SignerWithAddress) {
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
+      await reachCommitteeVote(gs, admin, id, ActionType.Resolve);
+      await gs.connect(admin).executeCommitteeAction(id);
       return id;
     }
 
     it("satisfied feedback closes the grievance", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAwaitingFeedback(fixture);
-      await fixture.gs.connect(fixture.student1).submitFeedback(id, true, "");
-      expect((await fixture.gs.getGrievance(id)).status).to.equal(GrievanceStatus.Closed);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAwaitingFeedback(gs, admin);
+      await gs.connect(admin).submitFeedback(id, true, "", STUDENT1_ID);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.Closed);
     });
 
     it("satisfied feedback removes from active list", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAwaitingFeedback(fixture);
-      await fixture.gs.connect(fixture.student1).submitFeedback(id, true, "");
-      const active = await fixture.gs.getActiveGrievanceIds();
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAwaitingFeedback(gs, admin);
+      await gs.connect(admin).submitFeedback(id, true, "", STUDENT1_ID);
+      const active = await gs.getActiveGrievanceIds();
       expect(active).to.not.include(id);
     });
 
     it("unsatisfied feedback re-escalates to Committee", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAwaitingFeedback(fixture);
-      await fixture.gs.connect(fixture.student1).submitFeedback(id, false, REMARK_CID);
-      expect((await fixture.gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtCommittee);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAwaitingFeedback(gs, admin);
+      await gs.connect(admin).submitFeedback(id, false, REMARK_CID, STUDENT1_ID);
+      expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtCommittee);
     });
 
     it("unsatisfied feedback resets threshold deadline", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAwaitingFeedback(fixture);
-      await fixture.gs.connect(fixture.student1).submitFeedback(id, false, REMARK_CID);
-      const g = await fixture.gs.getGrievance(id);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAwaitingFeedback(gs, admin);
+      await gs.connect(admin).submitFeedback(id, false, REMARK_CID, STUDENT1_ID);
+      const g = await gs.getGrievance(id);
       const now = BigInt(await time.latest());
       expect(g.thresholdDeadline).to.be.closeTo(now + BigInt(SEVEN_DAYS), 5n);
     });
 
-    it("wrong student cannot submit feedback", async () => {
-      const fixture = await loadFixture(deployFixture);
-      const id = await setupAwaitingFeedback(fixture);
+    it("wrong student ID cannot submit feedback", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await setupAwaitingFeedback(gs, admin); // submitted by STUDENT1_ID
       await expect(
-        fixture.gs.connect(fixture.student2).submitFeedback(id, true, "")
+        gs.connect(admin).submitFeedback(id, true, "", STUDENT2_ID) // wrong student
       ).to.be.revertedWith("GS: not the grievance owner");
     });
 
     it("reverts if grievance is not AwaitingFeedback", async () => {
-      const { gs, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
       await expect(
-        gs.connect(student1).submitFeedback(id, true, "")
+        gs.connect(admin).submitFeedback(id, true, "", STUDENT1_ID)
       ).to.be.revertedWith("GS: not awaiting feedback");
     });
   });
@@ -533,19 +530,16 @@ describe("GrievanceSystem", () => {
 
   describe("adminAutoForward", () => {
     it("admin can auto-forward after threshold exceeded at Committee level", async () => {
-      const { gs, admin, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-
-      // Fast-forward time past 7-day committee threshold
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       await time.increase(SEVEN_DAYS + 1);
-
       await gs.connect(admin).adminAutoForward(id);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtHoD);
     });
 
     it("auto-forward logs ActionType.AutoForward in history", async () => {
-      const { gs, admin, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       await time.increase(SEVEN_DAYS + 1);
       await gs.connect(admin).adminAutoForward(id);
 
@@ -555,9 +549,8 @@ describe("GrievanceSystem", () => {
     });
 
     it("reverts if threshold has not passed yet", async () => {
-      const { gs, admin, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
-      // Only 1 day has passed — not enough
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       await time.increase(60 * 60 * 24);
       await expect(
         gs.connect(admin).adminAutoForward(id)
@@ -565,23 +558,21 @@ describe("GrievanceSystem", () => {
     });
 
     it("non-admin cannot call adminAutoForward", async () => {
-      const { gs, student1, stranger } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+      const { gs, admin, stranger } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       await time.increase(SEVEN_DAYS + 1);
       await expect(
         gs.connect(stranger).adminAutoForward(id)
       ).to.be.revertedWith("GS: caller is not admin");
     });
 
-    it("cannot auto-forward a Closed grievance", async () => {
-      const { gs, admin, student1 } = await loadFixture(deployFixture);
-      const id = await submitGrievance(gs, student1);
+    it("cannot auto-forward past Principal level", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
+      const id = await submitGrievance(gs, admin);
       await time.increase(SEVEN_DAYS + 1);
-      await gs.connect(admin).adminAutoForward(id); // AtHoD now
+      await gs.connect(admin).adminAutoForward(id); // → AtHoD
       await time.increase(FIVE_DAYS + 1);
-      await gs.connect(admin).adminAutoForward(id); // AtPrincipal now
-
-      // Now at Principal — cannot auto-forward further
+      await gs.connect(admin).adminAutoForward(id); // → AtPrincipal
       await time.increase(THREE_DAYS + 1);
       await expect(
         gs.connect(admin).adminAutoForward(id)
@@ -632,19 +623,19 @@ describe("GrievanceSystem", () => {
 
   describe("Pause", () => {
     it("admin can pause the contract", async () => {
-      const { gs, admin, student1 } = await loadFixture(deployFixture);
+      const { gs, admin } = await loadFixture(deployFixture);
       await gs.connect(admin).pause();
       await expect(
-        gs.connect(student1).submitGrievance("A", "B", "CS", SAMPLE_CID, false)
-      ).to.be.reverted; // EnforcedPause from OpenZeppelin Pausable
+        gs.connect(admin).submitGrievance("A", "B", "CS", SAMPLE_CID, false, STUDENT1_ID)
+      ).to.be.reverted;
     });
 
     it("admin can unpause after pausing", async () => {
-      const { gs, admin, student1 } = await loadFixture(deployFixture);
+      const { gs, admin } = await loadFixture(deployFixture);
       await gs.connect(admin).pause();
       await gs.connect(admin).unpause();
       await expect(
-        gs.connect(student1).submitGrievance("A", "B", "CS", SAMPLE_CID, false)
+        gs.connect(admin).submitGrievance("A", "B", "CS", SAMPLE_CID, false, STUDENT1_ID)
       ).to.not.be.reverted;
     });
 
@@ -657,24 +648,19 @@ describe("GrievanceSystem", () => {
   // ── Full end-to-end happy path ────────────────────────────────────────────
 
   describe("Full lifecycle — satisfied resolution", () => {
-    it("Student → Committee resolve → Student satisfied → Closed", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
+    it("Submit → Committee resolve → Student satisfied → Closed", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
 
-      // Submit
-      const id = await submitGrievance(gs, student1);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtCommittee);
 
-      // Committee resolves
-      await gs.connect(committee1).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      await reachCommitteeVote(gs, admin, id, ActionType.Resolve);
+      await gs.connect(admin).executeCommitteeAction(id);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AwaitingFeedback);
 
-      // Student satisfied
-      await gs.connect(student1).submitFeedback(id, true, "");
+      await gs.connect(admin).submitFeedback(id, true, "", STUDENT1_ID);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.Closed);
 
-      // Audit trail has 3 entries: Submit, Resolve, FeedbackSatisfied
       const history = await gs.getActionHistory(id);
       expect(history.length).to.equal(3);
       expect(history[0].action).to.equal(ActionType.Submit);
@@ -684,30 +670,24 @@ describe("GrievanceSystem", () => {
   });
 
   describe("Full lifecycle — full escalation path", () => {
-    it("Student → Committee forward → HoD forward → Principal resolve → Satisfied → Closed", async () => {
-      const { gs, student1, committee1, committee2, hod, principal } = await loadFixture(deployFixture);
+    it("Submit → Committee forward → HoD forward → Principal resolve → Satisfied → Closed", async () => {
+      const { gs, admin } = await loadFixture(deployFixture);
 
-      const id = await submitGrievance(gs, student1);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
 
-      // Committee forwards
-      await gs.connect(committee1).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Forward, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      await reachCommitteeVote(gs, admin, id, ActionType.Forward);
+      await gs.connect(admin).executeCommitteeAction(id);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtHoD);
 
-      // HoD forwards
-      await gs.connect(hod).hodAction(id, ActionType.Forward, REMARK_CID);
+      await gs.connect(admin).hodAction(id, ActionType.Forward, REMARK_CID);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtPrincipal);
 
-      // Principal resolves
-      await gs.connect(principal).principalAction(id, ActionType.Resolve, REMARK_CID);
+      await gs.connect(admin).principalAction(id, ActionType.Resolve, REMARK_CID);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AwaitingFeedback);
 
-      // Student satisfied
-      await gs.connect(student1).submitFeedback(id, true, "");
+      await gs.connect(admin).submitFeedback(id, true, "", STUDENT1_ID);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.Closed);
 
-      // Full audit trail: Submit, Forward, Forward, Resolve, FeedbackSatisfied
       const history = await gs.getActionHistory(id);
       expect(history.length).to.equal(5);
     });
@@ -715,26 +695,21 @@ describe("GrievanceSystem", () => {
 
   describe("Full lifecycle — unsatisfied then satisfied", () => {
     it("Student unsatisfied → re-escalated to Committee → resolved → satisfied → Closed", async () => {
-      const { gs, student1, committee1, committee2 } = await loadFixture(deployFixture);
+      const { gs, admin } = await loadFixture(deployFixture);
 
-      const id = await submitGrievance(gs, student1);
+      const id = await submitGrievance(gs, admin, STUDENT1_ID);
 
-      // First resolution attempt
-      await gs.connect(committee1).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      await reachCommitteeVote(gs, admin, id, ActionType.Resolve);
+      await gs.connect(admin).executeCommitteeAction(id);
 
-      // Student not satisfied — goes back to Committee
-      await gs.connect(student1).submitFeedback(id, false, REMARK_CID);
+      await gs.connect(admin).submitFeedback(id, false, REMARK_CID, STUDENT1_ID);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.AtCommittee);
 
-      // Second resolution
-      await gs.connect(committee1).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.connect(committee2).committeePropose(id, ActionType.Resolve, REMARK_CID);
-      await gs.executeCommitteeAction(id);
+      // New round — same member IDs can vote again
+      await reachCommitteeVote(gs, admin, id, ActionType.Resolve);
+      await gs.connect(admin).executeCommitteeAction(id);
 
-      // Student satisfied this time
-      await gs.connect(student1).submitFeedback(id, true, "");
+      await gs.connect(admin).submitFeedback(id, true, "", STUDENT1_ID);
       expect((await gs.getGrievance(id)).status).to.equal(GrievanceStatus.Closed);
     });
   });
