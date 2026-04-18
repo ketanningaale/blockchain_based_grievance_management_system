@@ -190,12 +190,13 @@ class BlockchainService:
             "toStatus":       GrievanceStatus.name(raw[6]),
         }
 
-    def _get_grievance_id_from_receipt(self, receipt: TxReceipt) -> int:
-        """Parse the GrievanceSubmitted event to extract the new grievance ID."""
+    def _get_grievance_id_from_receipt(self, receipt: TxReceipt) -> tuple[int, int]:
+        """Parse GrievanceSubmitted event → (grievanceId, thresholdDeadline)."""
         logs = self._gs.events.GrievanceSubmitted().process_receipt(receipt)
         if not logs:
             raise RuntimeError("GrievanceSubmitted event not found in receipt")
-        return int(logs[0]["args"]["id"])
+        args = logs[0]["args"]
+        return int(args["id"]), int(args["thresholdDeadline"])
 
     # ── Student functions ─────────────────────────────────────────────────────
 
@@ -206,24 +207,26 @@ class BlockchainService:
         department: str,
         ipfs_cid: str,
         is_anonymous: bool,
+        student_id: bytes,
     ) -> dict:
         """
         Submit a new grievance on-chain.
-        Returns {"grievanceId": int, "txHash": str}.
+        Returns {"grievanceId": int, "txHash": str, "thresholdDeadline": int}.
         """
         fn = self._gs.functions.submitGrievance(
-            category, sub_category, department, ipfs_cid, is_anonymous
+            category, sub_category, department, ipfs_cid, is_anonymous, student_id
         )
         receipt = await asyncio.to_thread(self._build_and_send, fn)
-        grievance_id = self._get_grievance_id_from_receipt(receipt)
+        grievance_id, threshold_deadline = self._get_grievance_id_from_receipt(receipt)
         return {
-            "grievanceId": grievance_id,
-            "txHash":      receipt["transactionHash"].hex(),
+            "grievanceId":       grievance_id,
+            "txHash":            receipt["transactionHash"].hex(),
+            "thresholdDeadline": threshold_deadline,
         }
 
-    async def cast_vote(self, grievance_id: int, is_upvote: bool) -> dict:
-        """Upvote or downvote a grievance."""
-        fn      = self._gs.functions.castVote(grievance_id, is_upvote)
+    async def cast_vote(self, grievance_id: int, is_upvote: bool, student_id: bytes) -> dict:
+        """Upvote or downvote a grievance. student_id deduplicates per-student."""
+        fn      = self._gs.functions.castVote(grievance_id, is_upvote, student_id)
         receipt = await asyncio.to_thread(self._build_and_send, fn)
         return {"txHash": receipt["transactionHash"].hex()}
 
@@ -232,9 +235,12 @@ class BlockchainService:
         grievance_id: int,
         is_satisfied: bool,
         remarks_ipfs_cid: str,
+        student_id: bytes,
     ) -> dict:
         """Student submits satisfaction feedback after a resolve action."""
-        fn      = self._gs.functions.submitFeedback(grievance_id, is_satisfied, remarks_ipfs_cid)
+        fn      = self._gs.functions.submitFeedback(
+            grievance_id, is_satisfied, remarks_ipfs_cid, student_id
+        )
         receipt = await asyncio.to_thread(self._build_and_send, fn)
         return {"txHash": receipt["transactionHash"].hex()}
 
@@ -245,14 +251,17 @@ class BlockchainService:
         grievance_id: int,
         action: str,
         remarks_ipfs_cid: str,
+        member_id: bytes,
     ) -> dict:
         """
-        Committee member proposes an action (Forward / Resolve / Debar).
-        action is a string: "forward", "resolve", or "debar".
+        Relay wallet proposes/votes an action on behalf of a committee member.
+        member_id deduplicates per-member voting within the current round.
         """
         action_code = ActionType.from_string(action)
-        fn          = self._gs.functions.committeePropose(grievance_id, action_code, remarks_ipfs_cid)
-        receipt     = await asyncio.to_thread(self._build_and_send, fn)
+        fn          = self._gs.functions.committeePropose(
+            grievance_id, action_code, remarks_ipfs_cid, member_id
+        )
+        receipt = await asyncio.to_thread(self._build_and_send, fn)
         return {"txHash": receipt["transactionHash"].hex()}
 
     async def execute_committee_action(self, grievance_id: int) -> dict:

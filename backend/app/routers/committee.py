@@ -10,6 +10,7 @@ from app.services.blockchain import BlockchainService, get_blockchain_service
 from app.services.email import EmailService, get_email_service
 from app.services.firebase import FirebaseService, get_firebase_service
 from app.services.ipfs import IPFSService, get_ipfs_service
+from app.utils.crypto import hash_student_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -93,7 +94,10 @@ async def committee_propose(
         )
 
     try:
-        result = await bc.committee_propose(grievance_id, action, remarks_cid)
+        result = await bc.committee_propose(
+            grievance_id, action, remarks_cid,
+            hash_student_id(current_user["uid"]),
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
