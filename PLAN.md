@@ -7,7 +7,7 @@
 
 ## Progress Tracker
 
-_Last updated: April 2026_
+_Last updated: April 2026 (post-deployment fixes applied)_
 
 ### Blockchain (Hardhat + Solidity)
 
@@ -87,8 +87,25 @@ _Last updated: April 2026_
 | `docker-compose.yml` | Done | Backend service + optional Hardhat node comment |
 | `.github/workflows/ci.yml` | Done | Backend pytest, frontend type-check + lint, Solidity compile + test |
 | `.github/workflows/cd.yml` | Done | Render deploy hook + Vercel CLI deploy on push to main |
+| `.github/workflows/deploy-contracts.yml` | Done | Compile → test → deploy to Sepolia → export ABIs (no local tooling needed) |
 | `docs/deployment.md` | Done | Firebase, Pinata, SendGrid, Render, Vercel step-by-step |
 | `docs/besu-network.md` | Done | IBFT 2.0 3-node setup, genesis.json, systemd service |
+| `docs/architecture.md` | Done | Technical architecture: components, data flows, design decisions |
+
+---
+
+## Post-Deployment Fixes (April 2026)
+
+The following issues were discovered and fixed during live Sepolia + Render + Vercel deployment:
+
+| Issue | Root Cause | Fix Applied |
+|---|---|---|
+| Sign-in button reset immediately after login | `signInWithEmailAndPassword` returns before `verify-token` completes; loading state dropped too early | Added `isBusy = submitting \|\| (loading && !authError)` so spinner persists through token verification |
+| `submitGrievance` ABI argument mismatch | Backend added `studentId bytes32` param; `GrievanceSystem.json` in repo still had old 5-param ABI | Manually updated all affected ABI entries (`submitGrievance`, `castVote`, `submitFeedback`, `committeePropose`) |
+| CORS crash on startup (`ValueError: allow_credentials=True` + wildcard) | Starlette rejects `allow_origins=["*"]` combined with `allow_credentials=True` | Added wildcard check in `main.py`; set `allow_credentials=False` when origins is `*` |
+| Committee / HoD / Principal dashboards returned 500 | Firestore `order_by()` combined with multiple `where()` filters requires composite indexes that were not created | Removed `order_by` from all Firestore queries; sort in Python post-query |
+| `INSTITUTE_ADMIN_ADDRESS` wrong on first Sepolia deploy | Deploy workflow set admin to deployer wallet; relay wallet (actual `msg.sender`) had no ADMIN_ROLE → all txs reverted | Workflow now derives relay wallet address from `RELAY_WALLET_PRIVATE_KEY` and passes it as `INSTITUTE_ADMIN_ADDRESS` |
+| "Network error" on grievance submit (grievance still submitted) | Render drops HTTP connection at 30 seconds; Sepolia tx confirmation takes 30–60 seconds | IPFS upload stays synchronous; blockchain tx moved to FastAPI `BackgroundTask`; endpoint returns 202 immediately |
 
 ---
 
