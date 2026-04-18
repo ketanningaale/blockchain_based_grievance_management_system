@@ -43,7 +43,7 @@ def _build_profile(uid: str, decoded_token: dict, fb: FirebaseService) -> UserPr
         uid=uid,
         display_name=profile.get("displayName", ""),
         email=profile.get("email", ""),
-        role=decoded_token.get("role", profile.get("role", "student")),
+        role=profile.get("role", decoded_token.get("role", "student")),
         department=profile.get("department", ""),
         institute_id=profile.get("instituteId", ""),
         wallet_address=profile.get("walletAddress", ""),
