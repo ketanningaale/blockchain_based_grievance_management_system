@@ -1,0 +1,32 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "grievances",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentUid",  "order": "ASCENDING" },
+        { "fieldPath": "createdAt",   "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "grievances",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "instituteId", "order": "ASCENDING" },
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "createdAt",   "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "grievances",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "instituteId", "order": "ASCENDING" },
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "department",  "order": "ASCENDING" },
+        { "fieldPath": "createdAt",   "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
