@@ -6,12 +6,18 @@ const api: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Attach the Firebase ID token to every request automatically
+// Attach the Firebase ID token to every request automatically.
+// Also clear Content-Type for FormData so axios can set the correct
+// multipart boundary — the instance default (application/json) would
+// otherwise override it and break multipart parsing on the server.
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const user = auth.currentUser;
   if (user) {
     const token = await user.getIdToken();
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
   }
   return config;
 });
