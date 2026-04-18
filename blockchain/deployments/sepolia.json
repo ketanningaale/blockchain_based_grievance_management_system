@@ -1,14 +1,14 @@
 {
   "network": "sepolia",
   "chainId": 11155111,
-  "deployedAt": "2026-04-16T22:19:25.639Z",
-  "deployer": "0x1254836aC2e504fb546EeA9425e601c068b01437",
-  "factory": "0x5d3DD8ACB7865fC2df5669b3B5F869E20c638f67",
+  "deployedAt": "2026-04-18T11:09:48.798Z",
+  "deployer": "0x3C2C30f631143A5Da33fEA04BA60439455dc3B5C",
+  "factory": "0xFaf34c16c4b6fe5d7B968221d99550EC253b7184",
   "institute": {
     "id": 1,
     "name": "Demo Institute",
-    "admin": "0x1254836aC2e504fb546EeA9425e601c068b01437",
-    "roleManager": "0xe3B4d031247fcc6F5CFB8828c0FFed2deBd98fb1",
-    "grievanceSystem": "0x1323783c25Fae421b105aae1De825e4b155323Db"
+    "admin": "0x3C2C30f631143A5Da33fEA04BA60439455dc3B5C",
+    "roleManager": "0x14ecc7480f50Dc3FCB3Ec8A7d8d2437B53cC909A",
+    "grievanceSystem": "0x157F48FA448fd6fd5c2E2507B4DfCCCb72DC5d9f"
   }
 }
