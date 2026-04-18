@@ -59,22 +59,38 @@ jobs:
         working-directory: blockchain
         run: npm test
 
-      # ── 6. Deploy to Sepolia ──────────────────────────────────────────────────
+      # ── 6. Derive relay wallet address from private key ───────────────────────
+      # INSTITUTE_ADMIN_ADDRESS must be the relay wallet — it signs all txs and
+      # needs ADMIN_ROLE so that onlyAdmin() passes.
+      - name: Derive relay wallet address
+        working-directory: blockchain
+        env:
+          RELAY_WALLET_PRIVATE_KEY: ${{ secrets.RELAY_WALLET_PRIVATE_KEY }}
+        run: |
+          RELAY_ADDRESS=$(node -e "
+            const { ethers } = require('ethers');
+            const w = new ethers.Wallet(process.env.RELAY_WALLET_PRIVATE_KEY);
+            process.stdout.write(w.address);
+          ")
+          echo "RELAY_WALLET_ADDRESS=$RELAY_ADDRESS" >> $GITHUB_ENV
+          echo "Relay wallet address: $RELAY_ADDRESS"
+
+      # ── 7. Deploy to Sepolia ──────────────────────────────────────────────────
       - name: Deploy contracts to Sepolia
         working-directory: blockchain
         env:
-          ALCHEMY_SEPOLIA_URL:    ${{ secrets.ALCHEMY_SEPOLIA_URL }}
-          DEPLOYER_PRIVATE_KEY:   ${{ secrets.DEPLOYER_PRIVATE_KEY }}
-          INSTITUTE_ADMIN_ADDRESS: ${{ secrets.INSTITUTE_ADMIN_ADDRESS }}
-          INSTITUTE_NAME:         ${{ vars.INSTITUTE_NAME || 'Demo Institute' }}
+          ALCHEMY_SEPOLIA_URL:     ${{ secrets.ALCHEMY_SEPOLIA_URL }}
+          DEPLOYER_PRIVATE_KEY:    ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          INSTITUTE_ADMIN_ADDRESS: ${{ env.RELAY_WALLET_ADDRESS }}
+          INSTITUTE_NAME:          ${{ vars.INSTITUTE_NAME || 'Demo Institute' }}
         run: npm run deploy:sepolia
 
-      # ── 7. Export ABIs to backend ─────────────────────────────────────────────
+      # ── 8. Export ABIs to backend ─────────────────────────────────────────────
       - name: Export ABIs to backend
         working-directory: blockchain
         run: npm run export-abis
 
-      # ── 8. Print deployed addresses ──────────────────────────────────────────
+      # ── 9. Print deployed addresses ──────────────────────────────────────────
       - name: Print deployment info
         working-directory: blockchain
         run: |
@@ -89,15 +105,13 @@ jobs:
           print(f\"CONTRACT_GRIEVANCE_SYSTEM={inst['grievanceSystem']}\")
           print()
           print(f\"Network:  {d['network']} (chainId: {d['chainId']})\")
-          print(f\"Factory:  {d['factory']}\")
           print(f\"Deployed: {d['deployedAt']}\")
           "
           echo "================================================"
-          echo "Also set:"
-          echo "BESU_RPC_URL=<your Alchemy Sepolia URL>"
+          echo "Also update BESU_RPC_URL to your Alchemy Sepolia URL"
           echo "================================================"
 
-      # ── 9. Commit updated ABIs back to repo ──────────────────────────────────
+      # ── 10. Commit updated ABIs back to repo ─────────────────────────────────
       - name: Commit updated ABIs
         run: |
           git config user.name  "github-actions[bot]"
