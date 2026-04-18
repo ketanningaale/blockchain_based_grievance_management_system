@@ -92,7 +92,7 @@ class GrievanceListItem(BaseModel):
 
 
 class SubmitGrievanceResponse(BaseModel):
-    grievance_id: int
-    tx_hash:      str
     ipfs_cid:     str
-    message:      str = "Grievance submitted successfully."
+    message:      str = "Grievance accepted and queued for blockchain submission."
+    grievance_id: int | None = None
+    tx_hash:      str | None = None

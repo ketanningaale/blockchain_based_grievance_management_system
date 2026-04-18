@@ -147,7 +147,7 @@ export default function SubmitGrievancePage() {
 
       await api.post("/api/v1/grievances/", form);
 
-      toast.success("Grievance submitted successfully!");
+      toast.success("Grievance submitted! It will appear in your dashboard once confirmed on-chain (usually within 1–2 minutes).");
       router.push("/student/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Submission failed";
@@ -413,7 +413,7 @@ export default function SubmitGrievancePage() {
             className="btn-primary w-full py-3"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitting ? "Submitting to blockchain…" : "Submit Grievance"}
+            {submitting ? "Uploading & submitting…" : "Submit Grievance"}
           </button>
         </div>
       </form>

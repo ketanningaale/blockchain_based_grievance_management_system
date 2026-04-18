@@ -1,7 +1,8 @@
 import logging
+from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.config import Settings, get_settings
 from app.dependencies import get_current_user
@@ -102,82 +103,24 @@ async def _notify_next_level(
         logger.error("Failed to notify next level for grievance #%d: %s", grievance_id, exc)
 
 
-# ── Submit grievance ──────────────────────────────────────────────────────────
+# ── Submit grievance — background helpers ─────────────────────────────────────
 
-@router.post(
-    "/",
-    response_model=SubmitGrievanceResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Submit a new grievance",
-)
-async def submit_grievance(
-    # Text fields sent as form fields alongside files
-    title:        Annotated[str,  Form()],
-    category:     Annotated[str,  Form()],
-    department:   Annotated[str,  Form()],
-    description:  Annotated[str,  Form()],
-    sub_category: Annotated[str,  Form()] = "",
-    is_anonymous: Annotated[bool, Form()] = False,
-    files:        list[UploadFile] = File(default=[]),
-    current_user: dict              = Depends(get_current_user),
-    bc:           BlockchainService = Depends(get_blockchain_service),
-    fb:           FirebaseService   = Depends(get_firebase_service),
-    ipfs:         IPFSService       = Depends(get_ipfs_service),
-    emailsv:      EmailService      = Depends(get_email_service),
-    settings:     Settings          = Depends(get_settings),
-) -> SubmitGrievanceResponse:
+async def _submit_blockchain_background(
+    req:          SubmitGrievanceRequest,
+    uid:          str,
+    student_name: str,
+    ipfs_cid:     str,
+    attachments:  list[tuple[str, bytes, str]],
+    bc:           BlockchainService,
+    fb:           FirebaseService,
+    emailsv:      EmailService,
+    settings:     Settings,
+) -> None:
     """
-    Submit a new grievance. Accepts multipart/form-data so files can be
-    attached alongside the text fields.
-
-    Flow:
-      1. Validate input via Pydantic (via SubmitGrievanceRequest internally)
-      2. Read and validate uploaded files
-      3. Upload content bundle (text + files) to IPFS → get CID
-      4. Submit to smart contract → get on-chain ID + tx hash
-      5. Write Firestore cache entry
-      6. Send confirmation email to student
-      7. Notify committee members
+    Runs after the HTTP response is returned to the client.
+    Submits to blockchain, writes Firestore cache, and sends notifications.
+    Render's 30-second HTTP timeout does not affect background tasks.
     """
-    # 1. Validate fields using the Pydantic model
-    try:
-        req = SubmitGrievanceRequest(
-            title=title,
-            category=category,
-            sub_category=sub_category,
-            department=department,
-            description=description,
-            is_anonymous=is_anonymous,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    uid = current_user["uid"]
-
-    # 2. Read uploaded files
-    attachments: list[tuple[str, bytes, str]] = []
-    for f in files:
-        if f.filename and f.size and f.size > 0:
-            content   = await f.read()
-            mime_type = f.content_type or "application/octet-stream"
-            attachments.append((f.filename, content, mime_type))
-
-    # 3. Upload to IPFS
-    try:
-        ipfs_cid = await ipfs.upload_grievance_content(
-            title=req.title,
-            description=req.description,
-            category=req.category,
-            sub_category=req.sub_category,
-            department=req.department,
-            student_uid_hash=hash_student_id_hex(uid),
-            attachments=attachments if attachments else None,
-        )
-    except Exception as exc:
-        logger.error("IPFS upload failed: %s", exc)
-        raise HTTPException(status_code=503, detail=f"File storage unavailable: {exc}")
-
-    # 4. Submit to blockchain
     try:
         result = await bc.submit_grievance(
             category=req.category,
@@ -188,15 +131,12 @@ async def submit_grievance(
             student_id=hash_student_id(uid),
         )
     except Exception as exc:
-        logger.error("Blockchain submit failed: %s", exc)
-        raise HTTPException(status_code=503, detail=f"Blockchain unavailable: {exc}")
+        logger.error("Background blockchain submit failed for uid=%s ipfs=%s: %s", uid, ipfs_cid, exc)
+        return
+
     grievance_id = result["grievanceId"]
     tx_hash      = result["txHash"]
-
-    # 5. Write Firestore cache
-    student_name = "" if req.is_anonymous else current_user.get("name", "")
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
+    now          = datetime.now(timezone.utc)
 
     fb.upsert_grievance_cache(grievance_id, {
         "onChainId":         grievance_id,
@@ -218,7 +158,6 @@ async def submit_grievance(
         "txHash":            tx_hash,
     })
 
-    # 6. Notify student
     fb.create_notification(
         uid=uid,
         grievance_id=grievance_id,
@@ -237,15 +176,94 @@ async def submit_grievance(
             ),
         )
 
-    # 7. Notify committee
     await _notify_next_level("AtCommittee", req.department, grievance_id, fb, emailsv, settings)
+    logger.info("Background: grievance #%d submitted by uid=%s tx=%s", grievance_id, uid, tx_hash)
 
-    logger.info("Grievance #%d submitted by uid=%s tx=%s", grievance_id, uid, tx_hash)
+
+# ── Submit grievance ──────────────────────────────────────────────────────────
+
+@router.post(
+    "/",
+    response_model=SubmitGrievanceResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Submit a new grievance",
+)
+async def submit_grievance(
+    background_tasks: BackgroundTasks,
+    # Text fields sent as form fields alongside files
+    title:        Annotated[str,  Form()],
+    category:     Annotated[str,  Form()],
+    department:   Annotated[str,  Form()],
+    description:  Annotated[str,  Form()],
+    sub_category: Annotated[str,  Form()] = "",
+    is_anonymous: Annotated[bool, Form()] = False,
+    files:        list[UploadFile] = File(default=[]),
+    current_user: dict              = Depends(get_current_user),
+    bc:           BlockchainService = Depends(get_blockchain_service),
+    fb:           FirebaseService   = Depends(get_firebase_service),
+    ipfs:         IPFSService       = Depends(get_ipfs_service),
+    emailsv:      EmailService      = Depends(get_email_service),
+    settings:     Settings          = Depends(get_settings),
+) -> SubmitGrievanceResponse:
+    """
+    Submit a new grievance. Accepts multipart/form-data so files can be
+    attached alongside the text fields.
+
+    Flow:
+      1. Validate input
+      2. Read uploaded files
+      3. Upload content bundle to IPFS → get CID
+      4. Return 202 immediately (avoids Render's 30-second HTTP timeout)
+      5. Background: submit to blockchain, write Firestore cache, send notifications
+    """
+    try:
+        req = SubmitGrievanceRequest(
+            title=title,
+            category=category,
+            sub_category=sub_category,
+            department=department,
+            description=description,
+            is_anonymous=is_anonymous,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    uid = current_user["uid"]
+
+    attachments: list[tuple[str, bytes, str]] = []
+    for f in files:
+        if f.filename and f.size and f.size > 0:
+            content   = await f.read()
+            mime_type = f.content_type or "application/octet-stream"
+            attachments.append((f.filename, content, mime_type))
+
+    try:
+        ipfs_cid = await ipfs.upload_grievance_content(
+            title=req.title,
+            description=req.description,
+            category=req.category,
+            sub_category=req.sub_category,
+            department=req.department,
+            student_uid_hash=hash_student_id_hex(uid),
+            attachments=attachments if attachments else None,
+        )
+    except Exception as exc:
+        logger.error("IPFS upload failed: %s", exc)
+        raise HTTPException(status_code=503, detail=f"File storage unavailable: {exc}")
+
+    student_name = "" if req.is_anonymous else current_user.get("name", "")
+
+    background_tasks.add_task(
+        _submit_blockchain_background,
+        req, uid, student_name, ipfs_cid, attachments,
+        bc, fb, emailsv, settings,
+    )
+
+    logger.info("Grievance queued for blockchain submission by uid=%s ipfs=%s", uid, ipfs_cid)
 
     return SubmitGrievanceResponse(
-        grievance_id=grievance_id,
-        tx_hash=tx_hash,
         ipfs_cid=ipfs_cid,
+        message="Grievance accepted. It will appear in your dashboard once confirmed on-chain (usually within 1–2 minutes).",
     )
 
 
