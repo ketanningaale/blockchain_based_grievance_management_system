@@ -35,11 +35,16 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
+# Bearer-token auth (Authorization header) does not require allow_credentials.
+# When ALLOWED_ORIGINS=* we open to all origins; otherwise restrict to the list.
+
+_origins     = settings.origins_list
+_wildcard    = _origins == ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.origins_list,
-    allow_credentials=True,
+    allow_origins=["*"] if _wildcard else _origins,
+    allow_credentials=not _wildcard,   # can't combine credentials=True with *
     allow_methods=["*"],
     allow_headers=["*"],
 )
