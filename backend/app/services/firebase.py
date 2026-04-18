@@ -162,14 +162,17 @@ class FirebaseService:
 
     def list_student_grievances(self, student_uid: str, institute_id: str) -> list[dict]:
         """List all grievances submitted by a specific student."""
-        docs = (
-            self._db.collection("grievances")
-            .where("instituteId", "==", institute_id)
-            .where("studentUid", "==", student_uid)
-            .order_by("createdAt", direction=firestore.Query.DESCENDING)
-            .stream()
-        )
-        return [d.to_dict() for d in docs]
+        try:
+            docs = (
+                self._db.collection("grievances")
+                .where("studentUid", "==", student_uid)
+                .order_by("createdAt", direction=firestore.Query.DESCENDING)
+                .stream()
+            )
+            return [d.to_dict() for d in docs]
+        except Exception as exc:
+            logger.error("list_student_grievances failed: %s", exc)
+            return []
 
     # ── Notifications (Firestore: /notifications/{uid}/items/{notifId}) ───────
 
