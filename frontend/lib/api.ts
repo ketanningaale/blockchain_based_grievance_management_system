@@ -20,8 +20,17 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    const message =
-      err.response?.data?.detail ?? err.message ?? "Unknown error";
+    const detail = err.response?.data?.detail;
+    let message: string;
+    if (Array.isArray(detail)) {
+      // FastAPI 422 validation errors: [{loc, msg, type}, ...]
+      message = detail.map((e: { msg?: string; loc?: string[] }) => {
+        const field = e.loc ? e.loc[e.loc.length - 1] : "";
+        return field ? `${field}: ${e.msg}` : (e.msg ?? "Validation error");
+      }).join(", ");
+    } else {
+      message = detail ?? err.message ?? "Unknown error";
+    }
     return Promise.reject(new Error(message));
   }
 );
