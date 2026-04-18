@@ -111,8 +111,12 @@ class FirebaseService:
 
     def get_user_profile(self, uid: str) -> dict | None:
         """Return a user profile dict, or None if not found."""
-        doc = self._db.collection("users").document(uid).get()
-        return doc.to_dict() if doc.exists else None
+        try:
+            doc = self._db.collection("users").document(uid).get()
+            return doc.to_dict() if doc.exists else None
+        except Exception as exc:
+            logger.error("get_user_profile failed for uid=%s: %s", uid, exc)
+            return None
 
     def update_user_profile(self, uid: str, updates: dict) -> None:
         """Partial update of a user profile."""

@@ -48,7 +48,7 @@ function RegisteredToast() {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading, login } = useAuth();
+  const { user, loading, error: authError, login } = useAuth();
 
   const [submitting, setSubmitting] = useState(false);
   const [formError,  setFormError]  = useState<string | null>(null);
@@ -156,9 +156,9 @@ export default function LoginPage() {
           </div>
 
           {/* Server-side / Firebase error */}
-          {formError && (
+          {(formError || authError) && (
             <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              {formError}
+              {formError || authError}
             </div>
           )}
 
