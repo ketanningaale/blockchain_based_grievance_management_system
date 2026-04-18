@@ -68,6 +68,9 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
+  // Show spinner while Firebase auth OR verify-token is in flight
+  const isBusy = submitting || (loading && !authError);
+
   const onSubmit = async (data: FormValues) => {
     setSubmitting(true);
     setFormError(null);
@@ -165,11 +168,11 @@ export default function LoginPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={isBusy}
             className="btn-primary w-full py-3"
           >
-            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitting ? "Signing in…" : "Sign in"}
+            {isBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isBusy ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
