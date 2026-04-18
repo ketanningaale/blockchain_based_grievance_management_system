@@ -54,9 +54,9 @@
       },
       {
         "indexed": true,
-        "internalType": "address",
-        "name": "voter",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "memberId",
+        "type": "bytes32"
       },
       {
         "indexed": false,
@@ -235,6 +235,11 @@
         "internalType": "bool",
         "name": "isUpvote",
         "type": "bool"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "studentId",
+        "type": "bytes32"
       }
     ],
     "name": "castVote",
@@ -258,6 +263,11 @@
         "internalType": "string",
         "name": "remarksIpfsCid",
         "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "memberId",
+        "type": "bytes32"
       }
     ],
     "name": "committeePropose",
@@ -611,6 +621,11 @@
         "internalType": "string",
         "name": "remarksIpfsCid",
         "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "studentId",
+        "type": "bytes32"
       }
     ],
     "name": "submitFeedback",
@@ -644,6 +659,11 @@
         "internalType": "bool",
         "name": "isAnonymous",
         "type": "bool"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "studentId",
+        "type": "bytes32"
       }
     ],
     "name": "submitGrievance",
