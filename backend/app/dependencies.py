@@ -15,7 +15,9 @@ async def get_current_user(
     Dependency that:
       1. Extracts the Bearer token from the Authorization header
       2. Verifies it with Firebase Admin SDK
-      3. Returns the decoded token dict (contains uid, email, custom claims)
+      3. Overrides the token's role claim with the Firestore profile role
+         (token claims can be stale for up to 1 hour after an admin role change)
+      4. Returns the decoded token dict (contains uid, email, role)
 
     Usage in a router:
         @router.get("/me")
@@ -29,6 +31,12 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token.",
         )
+
+    # Firestore is the source of truth for role — token claims can lag by up to 1 hour
+    profile = firebase.get_user_profile(decoded["uid"])
+    if profile:
+        decoded["role"] = profile.get("role", decoded.get("role", "student"))
+
     return decoded
 
 
