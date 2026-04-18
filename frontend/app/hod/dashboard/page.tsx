@@ -10,7 +10,7 @@ import api from "@/lib/api";
 import type { GrievanceListItem } from "@/types";
 
 async function fetchHoDGrievances(): Promise<GrievanceListItem[]> {
-  const { data } = await api.get<GrievanceListItem[]>("/api/v1/grievances");
+  const { data } = await api.get<GrievanceListItem[]>("/api/v1/grievances/");
   return data;
 }
 

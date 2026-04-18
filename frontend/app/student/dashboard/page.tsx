@@ -14,7 +14,7 @@ import type { GrievanceListItem, GrievanceStatus } from "@/types";
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
 async function fetchMyGrievances(): Promise<GrievanceListItem[]> {
-  const { data } = await api.get<GrievanceListItem[]>("/api/v1/grievances");
+  const { data } = await api.get<GrievanceListItem[]>("/api/v1/grievances/");
   return data;
 }
 

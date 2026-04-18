@@ -145,7 +145,7 @@ export default function SubmitGrievancePage() {
       form.append("is_anonymous", String(data.is_anonymous));
       files.forEach((f) => form.append("files", f));
 
-      await api.post("/api/v1/grievances", form);
+      await api.post("/api/v1/grievances/", form);
 
       toast.success("Grievance submitted successfully!");
       router.push("/student/dashboard");

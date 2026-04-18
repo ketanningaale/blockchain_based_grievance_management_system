@@ -163,24 +163,32 @@ async def submit_grievance(
             attachments.append((f.filename, content, mime_type))
 
     # 3. Upload to IPFS
-    ipfs_cid = await ipfs.upload_grievance_content(
-        title=req.title,
-        description=req.description,
-        category=req.category,
-        sub_category=req.sub_category,
-        department=req.department,
-        student_uid_hash=hash_student_id_hex(uid),
-        attachments=attachments if attachments else None,
-    )
+    try:
+        ipfs_cid = await ipfs.upload_grievance_content(
+            title=req.title,
+            description=req.description,
+            category=req.category,
+            sub_category=req.sub_category,
+            department=req.department,
+            student_uid_hash=hash_student_id_hex(uid),
+            attachments=attachments if attachments else None,
+        )
+    except Exception as exc:
+        logger.error("IPFS upload failed: %s", exc)
+        raise HTTPException(status_code=503, detail=f"File storage unavailable: {exc}")
 
     # 4. Submit to blockchain
-    result       = await bc.submit_grievance(
-        category=req.category,
-        sub_category=req.sub_category,
-        department=req.department,
-        ipfs_cid=ipfs_cid,
-        is_anonymous=req.is_anonymous,
-    )
+    try:
+        result = await bc.submit_grievance(
+            category=req.category,
+            sub_category=req.sub_category,
+            department=req.department,
+            ipfs_cid=ipfs_cid,
+            is_anonymous=req.is_anonymous,
+        )
+    except Exception as exc:
+        logger.error("Blockchain submit failed: %s", exc)
+        raise HTTPException(status_code=503, detail=f"Blockchain unavailable: {exc}")
     grievance_id = result["grievanceId"]
     tx_hash      = result["txHash"]
 
