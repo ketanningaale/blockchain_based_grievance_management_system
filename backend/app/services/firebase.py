@@ -149,20 +149,21 @@ class FirebaseService:
     ) -> list[dict]:
         """
         List grievances from the Firestore cache with optional filters.
-        Returns dicts ordered by updatedAt descending.
+        Sorting is done in Python to avoid requiring Firestore composite indexes.
         """
-        query = (
-            self._db.collection("grievances")
-            .where("instituteId", "==", institute_id)
-            .order_by("updatedAt", direction=firestore.Query.DESCENDING)
-        )
-        if status:
-            query = query.where("status", "==", status)
-        if department:
-            query = query.where("department", "==", department)
+        try:
+            query = self._db.collection("grievances").where("instituteId", "==", institute_id)
+            if status:
+                query = query.where("status", "==", status)
+            if department:
+                query = query.where("department", "==", department)
 
-        docs = query.limit(limit).offset(offset).stream()
-        return [d.to_dict() for d in docs]
+            docs = [d.to_dict() for d in query.stream()]
+            docs.sort(key=lambda d: d.get("updatedAt") or 0, reverse=True)
+            return docs[offset: offset + limit]
+        except Exception as exc:
+            logger.error("list_grievances failed: %s", exc)
+            return []
 
     def list_student_grievances(self, student_uid: str, institute_id: str) -> list[dict]:
         """List all grievances submitted by a specific student."""
@@ -170,10 +171,11 @@ class FirebaseService:
             docs = (
                 self._db.collection("grievances")
                 .where("studentUid", "==", student_uid)
-                .order_by("createdAt", direction=firestore.Query.DESCENDING)
                 .stream()
             )
-            return [d.to_dict() for d in docs]
+            result = [d.to_dict() for d in docs]
+            result.sort(key=lambda d: d.get("createdAt") or 0, reverse=True)
+            return result
         except Exception as exc:
             logger.error("list_student_grievances failed: %s", exc)
             return []
