@@ -41,9 +41,9 @@ export function useAuth() {
           id_token: idToken,
         });
         setState({ user: data.user, firebaseUser, loading: false, error: null });
-      } catch {
-        // Token valid but no backend profile yet (e.g. during registration)
-        setState({ user: null, firebaseUser, loading: false, error: null });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unable to reach server — please try again.";
+        setState({ user: null, firebaseUser, loading: false, error: message });
       }
     });
 
